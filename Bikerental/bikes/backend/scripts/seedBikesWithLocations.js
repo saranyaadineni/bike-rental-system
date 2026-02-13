@@ -12,7 +12,7 @@ const bikesByLocation = {
     {
       name: 'Desert Cruiser E-Bike',
       type: 'electric',
-      image: '/bikes/electric-1.jpg',
+      image: 'https://images.unsplash.com/photo-1558981403-c5f97dbbe480?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 20,
       kmLimit: 40,
       available: true,
@@ -22,7 +22,7 @@ const bikesByLocation = {
     {
       name: 'Sand Storm MTB',
       type: 'fuel',
-      image: '/bikes/mountain-1.jpg',
+      image: 'https://images.unsplash.com/photo-1532298229144-0ee0c57515c5?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 15,
       kmLimit: 30,
       available: true,
@@ -32,7 +32,7 @@ const bikesByLocation = {
     {
       name: 'City Explorer',
       type: 'scooter',
-      image: '/bikes/city-1.jpg',
+      image: 'https://images.unsplash.com/photo-1594145070103-0c7f2167666e?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 10,
       kmLimit: 25,
       available: true,
@@ -44,7 +44,7 @@ const bikesByLocation = {
     {
       name: 'Beach Rider E-Bike',
       type: 'electric',
-      image: '/bikes/electric-2.jpg',
+      image: 'https://images.unsplash.com/photo-1558981403-c5f97dbbe480?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 18,
       kmLimit: 35,
       available: true,
@@ -54,7 +54,7 @@ const bikesByLocation = {
     {
       name: 'Coastal Cruiser',
       type: 'scooter',
-      image: '/bikes/city-2.jpg',
+      image: 'https://images.unsplash.com/photo-1594145070103-0c7f2167666e?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 12,
       kmLimit: 30,
       available: true,
@@ -64,7 +64,7 @@ const bikesByLocation = {
     {
       name: 'Goa Sport Bike',
       type: 'fuel',
-      image: '/bikes/sport-1.jpg',
+      image: 'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 25,
       kmLimit: 50,
       available: true,
@@ -76,7 +76,7 @@ const bikesByLocation = {
     {
       name: 'Mountain Thunder E-Bike',
       type: 'electric',
-      image: '/bikes/electric-1.jpg',
+      image: 'https://images.unsplash.com/photo-1558981403-c5f97dbbe480?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 22,
       kmLimit: 45,
       available: true,
@@ -86,7 +86,7 @@ const bikesByLocation = {
     {
       name: 'Himalayan Trail MTB',
       type: 'fuel',
-      image: '/bikes/mountain-1.jpg',
+      image: 'https://images.unsplash.com/photo-1532298229144-0ee0c57515c5?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 18,
       kmLimit: 35,
       available: true,
@@ -98,7 +98,7 @@ const bikesByLocation = {
     {
       name: 'Adventure E-Bike',
       type: 'electric',
-      image: '/bikes/electric-2.jpg',
+      image: 'https://images.unsplash.com/photo-1558981403-c5f97dbbe480?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 20,
       kmLimit: 40,
       available: true,
@@ -108,7 +108,7 @@ const bikesByLocation = {
     {
       name: 'Yoga City Bike',
       type: 'scooter',
-      image: '/bikes/city-1.jpg',
+      image: 'https://images.unsplash.com/photo-1594145070103-0c7f2167666e?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 10,
       kmLimit: 25,
       available: true,
@@ -120,7 +120,7 @@ const bikesByLocation = {
     {
       name: 'Metro E-Bike',
       type: 'electric',
-      image: '/bikes/electric-1.jpg',
+      image: 'https://images.unsplash.com/photo-1558981403-c5f97dbbe480?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 15,
       kmLimit: 30,
       available: true,
@@ -130,7 +130,7 @@ const bikesByLocation = {
     {
       name: 'Urban Explorer',
       type: 'scooter',
-      image: '/bikes/city-2.jpg',
+      image: 'https://images.unsplash.com/photo-1594145070103-0c7f2167666e?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 8,
       kmLimit: 20,
       available: true,
@@ -140,12 +140,34 @@ const bikesByLocation = {
     {
       name: 'Mumbai Sport',
       type: 'fuel',
-      image: '/bikes/sport-1.jpg',
+      image: 'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?q=80&w=800&auto=format&fit=crop',
       pricePerHour: 20,
       kmLimit: 40,
       available: true,
       description: 'Sport bike for Mumbai highways.',
       features: ['Carbon Frame', 'Aero Bars', '11 Speed', 'Clipless Pedals'],
+    },
+  ],
+  'LB Nagar': [
+    {
+      name: 'LB Nagar E-Commuter',
+      type: 'electric',
+      image: 'https://images.unsplash.com/photo-1558981403-c5f97dbbe480?q=80&w=800&auto=format&fit=crop',
+      pricePerHour: 18,
+      kmLimit: 35,
+      available: true,
+      description: 'Ideal for commuting in LB Nagar.',
+      features: ['450W Motor', 'LCD Display', '55km Range', 'LED Lights'],
+    },
+    {
+      name: 'LB Nagar Scooter',
+      type: 'scooter',
+      image: 'https://images.unsplash.com/photo-1594145070103-0c7f2167666e?q=80&w=800&auto=format&fit=crop',
+      pricePerHour: 12,
+      kmLimit: 30,
+      available: true,
+      description: 'Fast and reliable scooter for LB Nagar.',
+      features: ['Powerful Engine', 'Comfortable Seat', 'Large Storage'],
     },
   ],
 };

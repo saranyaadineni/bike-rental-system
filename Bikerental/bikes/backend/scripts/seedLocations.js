@@ -41,6 +41,13 @@ const defaultLocations = [
     country: 'India',
     isActive: true,
   },
+  {
+    name: 'LB Nagar',
+    city: 'Hyderabad',
+    state: 'Telangana',
+    country: 'India',
+    isActive: true,
+  },
 ];
 
 async function seedLocations() {
@@ -51,21 +58,19 @@ async function seedLocations() {
     // await Location.deleteMany({});
     // console.log('Cleared existing locations');
 
-    // Check if locations already exist
-    const existingLocations = await Location.find({ name: { $in: defaultLocations.map(l => l.name) } });
-    if (existingLocations.length > 0) {
-      console.log('⚠️  Some locations already exist. Skipping seed.');
-      console.log('Existing locations:', existingLocations.map(l => l.name).join(', '));
-      process.exit(0);
+    let seededCount = 0;
+    for (const loc of defaultLocations) {
+      const existing = await Location.findOne({ name: loc.name });
+      if (!existing) {
+        await Location.create(loc);
+        console.log(`✅ Seeded location: ${loc.name}`);
+        seededCount++;
+      } else {
+        console.log(`ℹ️  Location already exists: ${loc.name}`);
+      }
     }
 
-    // Insert locations
-    const createdLocations = await Location.insertMany(defaultLocations);
-    console.log(`✅ Seeded ${createdLocations.length} locations`);
-    createdLocations.forEach(loc => {
-      console.log(`  - ${loc.name}, ${loc.state}`);
-    });
-
+    console.log(`\n✅ Finished seeding locations. Total new: ${seededCount}`);
     process.exit(0);
   } catch (error) {
     console.error('Error seeding locations:', error);
