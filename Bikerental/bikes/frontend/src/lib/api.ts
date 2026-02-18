@@ -249,7 +249,6 @@ export const settingsAPI = {
         method: 'POST',
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
         body: fd,
-        credentials: 'include',
       });
       
       if (!res.ok) {
@@ -291,7 +290,6 @@ export const supportAPI = {
         method: 'POST',
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
         body: fd,
-        credentials: 'include',
       });
       
       if (!res.ok) {
