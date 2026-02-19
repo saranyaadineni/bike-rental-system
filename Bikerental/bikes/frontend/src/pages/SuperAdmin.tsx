@@ -106,6 +106,7 @@ export default function SuperAdmin() {
   const [editAdminOpen, setEditAdminOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
   const [editAdminForm, setEditAdminForm] = useState({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
+  const [editAdminOtherCity, setEditAdminOtherCity] = useState<string>('');
   const [bikeDialogOpen, setBikeDialogOpen] = useState(false);
   const [editingBike, setEditingBike] = useState<any | null>(null);
   const [bikeForm, setBikeForm] = useState<any>({ 
@@ -883,6 +884,7 @@ export default function SuperAdmin() {
                                   confirmPassword: '',
                                   locationId: userLocationId || '',
                                 });
+                                setEditAdminOtherCity('');
                                 setEditAdminOpen(true);
                               }}
                             >
@@ -1070,9 +1072,18 @@ export default function SuperAdmin() {
                       onChange={(e) => setEditAdminForm({ ...editAdminForm, confirmPassword: e.target.value })}
                     />
                   )}
-                  <Select value={editAdminForm.locationId} onValueChange={(v) => setEditAdminForm({ ...editAdminForm, locationId: v })}>
+                  <Select
+                    value={editAdminForm.locationId}
+                    onValueChange={(v) => {
+                      setEditAdminForm({ ...editAdminForm, locationId: v });
+                      if (v !== '__other__') {
+                        setEditAdminOtherCity('');
+                      }
+                    }}
+                  >
                     <SelectTrigger><SelectValue placeholder="Assign City/Garage" /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__other__">Other (Add new location)</SelectItem>
                       {locations.map((loc) => (
                         <SelectItem key={loc.id} value={loc.id}>
                           {formatLocationDisplay(loc)}
@@ -1080,15 +1091,59 @@ export default function SuperAdmin() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {editAdminForm.locationId === '__other__' && (
+                    <Input
+                      placeholder="New City / Location"
+                      value={editAdminOtherCity}
+                      onChange={(e) => setEditAdminOtherCity(e.target.value)}
+                    />
+                  )}
                   <div className="flex gap-2">
                     <Button
                       onClick={async () => {
                         if (!editingAdmin) return;
                         try {
+                          let locationId = editAdminForm.locationId;
+
+                          // Handle new location creation when "Other" is selected
+                          if (locationId === '__other__') {
+                            const cityRaw = editAdminOtherCity.trim();
+                            if (!cityRaw) {
+                              toast({ title: 'Error', description: 'Please enter a city/location name', variant: 'destructive' });
+                              return;
+                            }
+                            const cityLower = cityRaw.toLowerCase();
+                            const existingLocation =
+                              locations.find((l) => String(l.city || '').toLowerCase() === cityLower) ||
+                              locations.find((l) => String(l.name || '').toLowerCase() === cityLower);
+
+                            if (existingLocation?.id) {
+                              locationId = existingLocation.id;
+                            } else {
+                              const createdLocation = await locationsAPI.create({
+                                name: cityRaw,
+                                city: cityRaw,
+                                state: cityRaw,
+                                country: 'India',
+                              });
+                              locationId = createdLocation?.id;
+                            }
+
+                            if (!locationId) {
+                              toast({ title: 'Error', description: 'Failed to create location', variant: 'destructive' });
+                              return;
+                            }
+                          }
+
+                          if (!locationId) {
+                            toast({ title: 'Error', description: 'City/Garage is required', variant: 'destructive' });
+                            return;
+                          }
+
                           const payload: any = {
                             name: editAdminForm.name,
                             email: editAdminForm.email,
-                            locationId: editAdminForm.locationId,
+                            locationId,
                           };
                           
                           // If password is provided, validate it
@@ -1113,6 +1168,7 @@ export default function SuperAdmin() {
                           setEditingAdmin(null);
                           // Reset form after successful update
                           setEditAdminForm({ name: '', email: '', password: '', confirmPassword: '', locationId: '' });
+                          setEditAdminOtherCity('');
                           loadData();
                         } catch (e: any) {
                           toast({ title: 'Error', description: e.message || 'Failed to update admin', variant: 'destructive' });
