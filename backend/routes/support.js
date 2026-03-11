@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { authenticateToken } from './auth.js';
+import mongoose from 'mongoose';
+import { authenticateToken, JWT_SECRET } from './auth.js';
 import SupportTicket from '../models/SupportTicket.js';
 import User from '../models/User.js';
 import Rental from '../models/Rental.js';
@@ -231,7 +232,6 @@ router.post('/', async (req, res) => {
     // Check for auth token manually to handle both guest and logged-in users
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
     
     let userId = null;
     let userRole = 'guest';
@@ -241,19 +241,27 @@ router.post('/', async (req, res) => {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
         console.log('Decoded token for ticket creation:', decoded);
-        userId = decoded.userId || decoded.id; // Support both userId and id field in token
+        const tokenUserId = decoded.userId || decoded.id; // Support both userId and id field in token
         
-        if (userId) {
-          const user = await User.findById(userId);
-          if (user) {
-            userRole = user.role;
-            // If no locationId provided in body, use user's current location
-            if (!locationId && user.currentLocationId) {
-              finalLocationId = user.currentLocationId.toString();
+        if (tokenUserId) {
+          // If we have a valid ID from token, we trust it for userId
+          try {
+            userId = new mongoose.Types.ObjectId(tokenUserId);
+          } catch (e) {
+            console.warn('Invalid ObjectId in token:', tokenUserId);
+            userId = null;
+          }
+          
+          if (userId) {
+            // Still try to find user to get role and location, but don't null out userId if user not found immediately
+            const user = await User.findById(userId);
+            if (user) {
+              userRole = user.role;
+              // If no locationId provided in body, use user's current location
+              if (!locationId && user.currentLocationId) {
+                finalLocationId = user.currentLocationId.toString();
+              }
             }
-          } else {
-            console.warn('User from token not found in database:', userId);
-            userId = null; 
           }
         }
       } catch (e) {

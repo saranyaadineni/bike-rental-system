@@ -4,8 +4,9 @@ import User from '../models/User.js';
 import { transformUser } from '../utils/transform.js';
 import crypto from 'crypto';
 
+export const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Register
 router.post('/register', async (req, res) => {

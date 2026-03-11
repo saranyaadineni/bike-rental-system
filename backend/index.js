@@ -1,6 +1,7 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import bikeRoutes from './routes/bikes.js';
@@ -13,8 +14,6 @@ import settingsRoutes from './routes/settings.js';
 import heroImageRoutes from './routes/heroImages.js';
 import supportRoutes from './routes/support.js';
 import { initCronJobs } from './utils/cron.js';
-
-dotenv.config();
 
 const app = express();
 
