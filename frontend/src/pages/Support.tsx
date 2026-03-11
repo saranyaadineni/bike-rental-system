@@ -325,7 +325,8 @@ function CreateTicketDialog({ open, onOpenChange, onSuccess }: { open: boolean; 
         category: category === 'other' ? customCategory : category,
         description,
         rentalId: selectedRentalId === 'none' ? undefined : selectedRentalId,
-        images: imageUrls
+        images: imageUrls,
+        locationId: localStorage.getItem('selectedLocation') || undefined
       });
 
       toast({ title: 'Success', description: 'Ticket created successfully' });
@@ -368,13 +369,7 @@ function CreateTicketDialog({ open, onOpenChange, onSuccess }: { open: boolean; 
             </div>
             <Input 
               value={subject} 
-              onChange={(e) => {
-                const val = e.target.value;
-                // Allow only alphabets and spaces
-                if (/^[a-zA-Z\s]*$/.test(val)) {
-                  setSubject(val);
-                }
-              }} 
+              onChange={(e) => setSubject(e.target.value)} 
               placeholder="Brief summary of the issue" 
               required 
               minLength={5}

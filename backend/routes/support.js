@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import { authenticateToken } from './auth.js';
 import SupportTicket from '../models/SupportTicket.js';
 import User from '../models/User.js';
+import Rental from '../models/Rental.js';
+import Bike from '../models/Bike.js';
 import SupportReply from '../models/SupportReply.js';
 import { sendEmail } from '../utils/email.js';
 import multer from 'multer';
@@ -233,16 +235,26 @@ router.post('/', async (req, res) => {
     
     let userId = null;
     let userRole = 'guest';
+    let finalLocationId = locationId;
 
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        userId = decoded.userId;
-        const user = await User.findById(userId);
-        if (user) {
-          userRole = user.role;
-        } else {
-          userId = null; // User from token not found
+        console.log('Decoded token for ticket creation:', decoded);
+        userId = decoded.userId || decoded.id; // Support both userId and id field in token
+        
+        if (userId) {
+          const user = await User.findById(userId);
+          if (user) {
+            userRole = user.role;
+            // If no locationId provided in body, use user's current location
+            if (!locationId && user.currentLocationId) {
+              finalLocationId = user.currentLocationId.toString();
+            }
+          } else {
+            console.warn('User from token not found in database:', userId);
+            userId = null; 
+          }
         }
       } catch (e) {
         console.warn('Invalid token provided for ticket creation, proceeding as guest:', e.message);
@@ -250,10 +262,22 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // If rentalId is provided, try to get location from the bike's location
+    if (!finalLocationId && rentalId) {
+      try {
+        const rental = await Rental.findById(rentalId).populate('bikeId');
+        if (rental && rental.bikeId) {
+          finalLocationId = rental.bikeId.locationId;
+        }
+      } catch (e) {
+        console.warn('Failed to fetch rental/bike for location info:', e.message);
+      }
+    }
+
     const ticketData = {
       userId: userId || undefined,
       rentalId: rentalId || undefined,
-      locationId: locationId || undefined,
+      locationId: finalLocationId || undefined,
       guestName: userId ? undefined : guestName,
       guestEmail: userId ? undefined : guestEmail,
       subject,

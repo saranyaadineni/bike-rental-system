@@ -49,7 +49,6 @@ const supportTicketSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['breakdown', 'accident', 'damage', 'other', 'contact'],
     default: 'other'
   },
   status: {

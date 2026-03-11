@@ -51,7 +51,7 @@ async function apiRequest<T>(path: string, init: RequestInit = {}, isPublic = fa
     ...init.headers,
   } as Record<string, string>;
 
-  if (token && !isPublic) {
+  if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
