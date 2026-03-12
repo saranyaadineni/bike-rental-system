@@ -96,6 +96,10 @@ export const authAPI = {
     }
   },
   getCurrentUser: () => apiRequest<any>('/auth/me'),
+  sendEmailOTP: (email: string) => apiRequest<any>('/auth/send-email-otp', { method: 'POST', body: JSON.stringify({ email }) }),
+  verifyEmailOTP: (email: string, otp: string) => apiRequest<any>('/auth/verify-email-otp', { method: 'POST', body: JSON.stringify({ email, otp }) }),
+  sendMobileOTP: (mobile: string) => apiRequest<any>('/auth/send-mobile-otp', { method: 'POST', body: JSON.stringify({ mobile }) }),
+  verifyMobileOTP: (mobile: string, otp: string) => apiRequest<any>('/auth/verify-mobile-otp', { method: 'POST', body: JSON.stringify({ mobile, otp }) }),
 };
 
 export const getCurrentUser = () => {

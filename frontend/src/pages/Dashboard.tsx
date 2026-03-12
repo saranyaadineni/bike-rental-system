@@ -52,6 +52,10 @@ export default function Dashboard() {
   const [rentals, setRentals] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEmailVerifying, setIsEmailVerifying] = useState(false);
+  const [isMobileVerifying, setIsMobileVerifying] = useState(false);
+  const [emailOTP, setEmailOTP] = useState('');
+  const [mobileOTP, setMobileOTP] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
@@ -173,6 +177,59 @@ export default function Dashboard() {
     }
   };
 
+  const handleSendEmailOTP = async () => {
+    if (!formData.email) return;
+    try {
+      await authAPI.sendEmailOTP(formData.email);
+      setIsEmailVerifying(true);
+      toast({ title: "OTP Sent", description: "Verification code sent to your email" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleVerifyEmailOTP = async () => {
+    if (!emailOTP) return;
+    try {
+      const result = await authAPI.verifyEmailOTP(formData.email, emailOTP);
+      setUser(result.user);
+      setIsEmailVerifying(false);
+      setEmailOTP('');
+      toast({ title: "Success", description: "Email verified successfully" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleSendMobileOTP = async () => {
+    if (!formData.mobile) return;
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(formData.mobile)) {
+      toast({ title: "Invalid Mobile", description: "Please enter a valid 10-digit mobile number", variant: "destructive" });
+      return;
+    }
+    try {
+      await authAPI.sendMobileOTP(formData.mobile);
+      setIsMobileVerifying(true);
+      toast({ title: "OTP Sent", description: "Verification code sent to your mobile number" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleVerifyMobileOTP = async () => {
+    if (!mobileOTP) return;
+    try {
+      const result = await authAPI.verifyMobileOTP(formData.mobile, mobileOTP);
+      setUser(result.user);
+      setIsMobileVerifying(false);
+      setMobileOTP('');
+      toast({ title: "Success", description: "Mobile number verified successfully" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   const handleUpdateProfile = async () => {
     if (!user) return;
 
@@ -207,6 +264,24 @@ export default function Dashboard() {
       toast({
         title: "Missing Information",
         description: "Please fill all required fields (except Hotel Stay).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user.emailVerified || formData.email !== user.email) {
+      toast({
+        title: "Email Not Verified",
+        description: "Please verify your email address using OTP.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user.mobileVerified || formData.mobile !== user.mobile) {
+      toast({
+        title: "Mobile Not Verified",
+        description: "Please verify your mobile number using OTP.",
         variant: "destructive",
       });
       return;
@@ -512,19 +587,42 @@ export default function Dashboard() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="mobile">Mobile Number</Label>
-                      <Input
-                        id="mobile"
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={10}
-                        pattern="^[6-9]\\d{9}$"
-                        value={formData.mobile}
-                        onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                          setFormData(prev => ({ ...prev, mobile: digits }));
-                        }}
-                        placeholder="Enter your mobile number"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="mobile"
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          pattern="^[6-9]\\d{9}$"
+                          value={formData.mobile}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            setFormData(prev => ({ ...prev, mobile: digits }));
+                          }}
+                          placeholder="Enter your mobile number"
+                          className="flex-1"
+                          disabled={user?.mobileVerified && formData.mobile === user.mobile}
+                        />
+                        {formData.mobile && formData.mobile !== user?.mobile && !isMobileVerifying && (
+                          <Button size="sm" onClick={handleSendMobileOTP}>Send OTP</Button>
+                        )}
+                        {user?.mobileVerified && formData.mobile === user.mobile && (
+                          <Badge className="bg-green-500/10 text-green-500 border-none">Verified</Badge>
+                        )}
+                      </div>
+                      {isMobileVerifying && (
+                        <div className="flex gap-2 mt-2">
+                          <Input
+                            placeholder="Enter 6-digit OTP"
+                            value={mobileOTP}
+                            onChange={(e) => setMobileOTP(e.target.value)}
+                            maxLength={6}
+                            className="w-32"
+                          />
+                          <Button size="sm" onClick={handleVerifyMobileOTP}>Verify</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setIsMobileVerifying(false)}>Cancel</Button>
+                        </div>
+                      )}
                       {formData.mobile && !/^[6-9]\d{9}$/.test(formData.mobile) && (
                         <p className="text-xs text-destructive">Enter 10 digits starting with 6, 7, 8, or 9</p>
                       )}
@@ -623,13 +721,36 @@ export default function Dashboard() {
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="email">Email Address</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        disabled
-                        className="bg-muted"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="Enter your email address"
+                          className="flex-1"
+                          disabled={user?.emailVerified && formData.email === user.email}
+                        />
+                        {formData.email && formData.email !== user?.email && !isEmailVerifying && (
+                          <Button size="sm" onClick={handleSendEmailOTP}>Send OTP</Button>
+                        )}
+                        {user?.emailVerified && formData.email === user.email && (
+                          <Badge className="bg-green-500/10 text-green-500 border-none">Verified</Badge>
+                        )}
+                      </div>
+                      {isEmailVerifying && (
+                        <div className="flex gap-2 mt-2">
+                          <Input
+                            placeholder="Enter 6-digit OTP"
+                            value={emailOTP}
+                            onChange={(e) => setEmailOTP(e.target.value)}
+                            maxLength={6}
+                            className="w-32"
+                          />
+                          <Button size="sm" onClick={handleVerifyEmailOTP}>Verify</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setIsEmailVerifying(false)}>Cancel</Button>
+                        </div>
+                      )}
                     </div>
                     <div className="md:col-span-2">
                       <Button onClick={handleUpdateProfile}>

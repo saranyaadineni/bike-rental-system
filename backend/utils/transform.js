@@ -67,6 +67,8 @@ export function transformUser(user) {
     locationId: userObj.locationId?._id?.toString() || userObj.locationId?.toString() || userObj.locationId || null,
     walletBalance: userObj.walletBalance,
     isVerified: userObj.isVerified || false,
+    emailVerified: userObj.emailVerified || false,
+    mobileVerified: userObj.mobileVerified || false,
     documents: userObj.documents || [],
     createdAt: userObj.createdAt
   };

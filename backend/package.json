@@ -25,7 +25,8 @@
     "mongoose": "^8.20.2",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.11",
-    "razorpay": "^2.9.6"
+    "razorpay": "^2.9.6",
+    "twilio": "^5.13.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
