@@ -40,6 +40,7 @@ export interface Bike {
   weekendSurgeMultiplier?: number;
   gstPercentage?: number;
   available: boolean;
+  status?: 'available' | 'maintenance' | 'disabled';
   description: string;
   features: string[];
   locationId: string | null;

@@ -28,6 +28,7 @@ export function transformBike(bike) {
     pricePerWeek: bikeObj.pricePerWeek || null,
     kmLimit: bikeObj.kmLimit,
     available: bikeObj.available,
+    status: bikeObj.status || 'available',
     // Tariff fields
     weekdayRate: bikeObj.weekdayRate || null,
     weekendRate: bikeObj.weekendRate || null,

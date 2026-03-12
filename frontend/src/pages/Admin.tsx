@@ -491,7 +491,7 @@ export default function Admin() {
     { label: 'Total Bikes', value: bikes.length, icon: Bike, color: 'gradient-hero', onClick: () => setTab('bikes') },
     { label: 'Available', value: availableCount, icon: Bike, color: 'bg-accent', onClick: () => setTab('bikes') },
     { label: 'In Use', value: inUseCount, icon: Bike, color: 'bg-primary', onClick: () => setTab('bookings') },
-    { label: 'Maintenance', value: maintenanceCount, icon: Wrench, color: 'bg-secondary' },
+    { label: 'Maintenance', value: maintenanceCount, icon: Wrench, color: 'bg-secondary', onClick: () => setTab('bikes') },
   ];
 
   const rentalsForLocation = rentals.filter((r) => {
@@ -820,7 +820,10 @@ export default function Admin() {
               ))}
             </div>
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-card rounded-2xl shadow-card p-6">
+              <div 
+                className="bg-card rounded-2xl shadow-card p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setTab('bookings')}
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                     <CalendarIcon className="h-6 w-6 text-primary" />
@@ -831,7 +834,10 @@ export default function Admin() {
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl shadow-card p-6">
+              <div 
+                className="bg-card rounded-2xl shadow-card p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setTab('bookings')}
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
                     <CalendarIcon className="h-6 w-6 text-secondary-foreground" />
@@ -842,7 +848,10 @@ export default function Admin() {
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl shadow-card p-6">
+              <div 
+                className="bg-card rounded-2xl shadow-card p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setTab('documents')}
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
                     <FileText className="h-6 w-6 text-accent" />
@@ -896,8 +905,19 @@ export default function Admin() {
                       <td className="px-6 py-4">₹{bike.weekdayRate || bike.pricePerHour || Math.round((bike.price12Hours || 0) / 12)}</td>
                       <td className="px-6 py-4">{bike.kmLimitPerHour ? `${bike.kmLimitPerHour} km/hr` : `${bike.kmLimit} km`}</td>
                       <td className="px-6 py-4">
-                        <Badge variant={bike.available ? 'default' : 'secondary'} className={bike.available ? 'bg-accent text-accent-foreground' : ''}>
-                          {inUseBikeIds.has(bike.id) ? 'In Use' : bike.available ? 'Available' : 'Maintenance'}
+                        <Badge 
+                          variant={bike.available ? 'default' : 'secondary'} 
+                          className={
+                            inUseBikeIds.has(bike.id) ? 'bg-primary text-primary-foreground' :
+                            bike.status === 'maintenance' ? 'bg-secondary text-secondary-foreground' :
+                            bike.status === 'disabled' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                            bike.available ? 'bg-accent text-accent-foreground' : ''
+                          }
+                        >
+                          {inUseBikeIds.has(bike.id) ? 'In Use' : 
+                           bike.status === 'maintenance' ? 'Maintenance' :
+                           bike.status === 'disabled' ? 'Disabled' :
+                           bike.available ? 'Available' : 'Maintenance'}
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
@@ -911,8 +931,8 @@ export default function Admin() {
                                 size="sm"
                                 onClick={async () => {
                                   try {
-                                    await bikesAPI.update(bike.id, { available: false });
-                                    toast({ title: "Marked Maintenance", description: `${bike.name} disabled for booking.` });
+                                    await bikesAPI.update(bike.id, { status: 'maintenance' });
+                                    toast({ title: "Marked Maintenance", description: `${bike.name} is now under maintenance.` });
                                     loadData();
                                   } catch (e: any) {
                                     toast({ title: "Error", description: e.message || "Failed to update bike", variant: "destructive" });
@@ -927,8 +947,8 @@ export default function Admin() {
                                 size="sm"
                                 onClick={async () => {
                                   try {
-                                    await bikesAPI.update(bike.id, { available: false });
-                                    toast({ title: "Temporarily Disabled", description: `${bike.name} disabled for booking.` });
+                                    await bikesAPI.update(bike.id, { status: 'disabled' });
+                                    toast({ title: "Vehicle Disabled", description: `${bike.name} has been disabled.` });
                                     loadData();
                                   } catch (e: any) {
                                     toast({ title: "Error", description: e.message || "Failed to update bike", variant: "destructive" });
@@ -943,7 +963,7 @@ export default function Admin() {
                               size="sm"
                               onClick={async () => {
                                 try {
-                                  await bikesAPI.update(bike.id, { available: true });
+                                  await bikesAPI.update(bike.id, { status: 'available' });
                                   toast({ title: "Enabled", description: `${bike.name} is now available.` });
                                   loadData();
                                 } catch (e: any) {

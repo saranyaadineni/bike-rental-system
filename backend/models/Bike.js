@@ -39,6 +39,7 @@ const bikeSchema = new mongoose.Schema({
     weekly: { type: pricingSlabSchema },
   },
   available: { type: Boolean, default: true },
+  status: { type: String, enum: ['available', 'maintenance', 'disabled'], default: 'available' },
   description: { type: String, default: '' },
   features: [{ type: String }],
   locationId: {

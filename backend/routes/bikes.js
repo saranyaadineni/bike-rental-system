@@ -191,7 +191,8 @@ router.post('/', authenticateToken, async (req, res) => {
       pricingSlabs: pricingSlabs || undefined,
       weekendSurgeMultiplier: weekendSurgeMultiplier ? parseFloat(weekendSurgeMultiplier) : 1.0,
       gstPercentage: gstPercentage !== undefined && gstPercentage !== null && gstPercentage !== '' ? parseFloat(gstPercentage) : 18.0,
-      available: true,
+      available: req.body.status ? req.body.status === 'available' : true,
+      status: req.body.status || 'available',
       description: description || '',
       features: features || [],
       locationId
@@ -252,11 +253,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
       weekendRate,
       excessKmCharge,
       kmLimitPerHour,
-      minBookingHours
+      minBookingHours,
+      status
     } = req.body;
 
     // Build update object with only provided fields
     const updateData = {};
+    if (status !== undefined) {
+      updateData.status = status;
+      // Automatically sync available field based on status
+      updateData.available = (status === 'available');
+    }
     if (name !== undefined) updateData.name = name;
     if (type !== undefined) updateData.type = type;
     if (brand !== undefined) updateData.brand = brand || '';
