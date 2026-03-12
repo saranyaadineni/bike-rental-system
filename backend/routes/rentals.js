@@ -136,6 +136,23 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Bike is not available' });
     }
 
+    // Check if user documents are verified
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const requiredDocs = ['aadhar_front', 'aadhar_back', 'driving_license', 'pan'];
+    const approvedDocTypes = (user.documents || [])
+      .filter(doc => doc.status === 'approved')
+      .map(doc => doc.type);
+
+    const allDocsApproved = requiredDocs.every(type => approvedDocTypes.includes(type));
+
+    if (!allDocsApproved) {
+      return res.status(403).json({ message: 'Please upload and get all required documents approved before booking.' });
+    }
+
     // Check if user has active/confirmed rental
     const activeRental = await Rental.findOne({
       userId: req.user.userId,
@@ -147,7 +164,6 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // Check user wallet balance
-    const user = await User.findById(req.user.userId);
     if (user.walletBalance < bike.pricePerHour) {
       return res.status(400).json({ message: 'Insufficient wallet balance' });
     }
