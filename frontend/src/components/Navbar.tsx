@@ -189,9 +189,11 @@ export const Navbar = memo(function Navbar() {
   }, [user]);
 
   const handleLogout = useCallback(() => {
-    authAPI.logout();
-    setUser(null);
-    navigate('/');
+    if (window.confirm("Are you sure you want to logout?")) {
+      authAPI.logout();
+      setUser(null);
+      navigate('/');
+    }
   }, [navigate]);
 
   const isActive = useCallback((path: string) => location.pathname === path, [location.pathname]);

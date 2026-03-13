@@ -352,8 +352,10 @@ export default function SuperAdmin() {
   };
 
   const handleLogout = () => {
-    authAPI.logout();
-    navigate('/');
+    if (window.confirm("Are you sure you want to logout?")) {
+      authAPI.logout();
+      navigate('/');
+    }
   };
 
   const tabs = [
@@ -463,9 +465,12 @@ export default function SuperAdmin() {
     }
   };
 
-  const handleVerifyUser = async (userId: string) => {
-    await usersAPI.update(userId, { isVerified: true });
-    toast({ title: 'User Verified', description: 'User has been marked as verified' });
+  const handleVerifyUser = async (userId: string, status: boolean = true) => {
+    await usersAPI.update(userId, { isVerified: status });
+    toast({ 
+      title: status ? 'User Verified' : 'User Unverified', 
+      description: `User has been marked as ${status ? 'verified' : 'unverified'}` 
+    });
     loadData();
   };
   
@@ -1551,23 +1556,48 @@ export default function SuperAdmin() {
                               </div>
                               <p className="text-xs font-medium mb-1 truncate">{doc.type.replace('_', ' ')}</p>
                               <p className="text-xs text-muted-foreground mb-2 truncate">{doc.name}</p>
-                              {doc.url && (
-                                <div className="mb-2 border rounded overflow-hidden bg-background">
-                                  <img
-                                    src={doc.url}
-                                    alt={doc.name}
-                                    className="w-full h-24 sm:h-32 object-contain"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                    }}
-                                  />
-                                </div>
-                              )}
-                              {doc.status === 'pending' && (
-                                <Badge variant="outline" className="text-xs mt-2 w-full justify-center">
-                                  Awaiting
-                                </Badge>
-                              )}
+                              {/* Document Preview */}
+                              <div 
+                                className="mb-2 border rounded overflow-hidden bg-background cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => {
+                                  if (doc.url) {
+                                    setPreviewImageUrl(doc.url);
+                                    setIsPreviewModalOpen(true);
+                                  }
+                                }}
+                              >
+                                <img
+                                  src={doc.url}
+                                  alt={doc.name}
+                                  className="w-full h-24 sm:h-32 object-contain"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                              <div className="flex gap-2 justify-center mt-2">
+                                {doc.status !== 'rejected' && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    className="h-7 px-2 text-[10px] text-destructive hover:text-destructive flex-1"
+                                    onClick={() => handleDocumentAction(doc.id || doc._id, 'reject')}
+                                  >
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Reject
+                                  </Button>
+                                )}
+                                {doc.status !== 'approved' && (
+                                  <Button 
+                                    size="sm"
+                                    className="h-7 px-2 text-[10px] bg-accent hover:bg-accent/90 flex-1"
+                                    onClick={() => handleDocumentAction(doc.id || doc._id, 'approve')}
+                                  >
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Approve
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -2069,7 +2099,15 @@ export default function SuperAdmin() {
                         </div>
                         
                         {/* Document Preview */}
-                        <div className="mb-2 sm:mb-3 border rounded-lg overflow-hidden bg-muted/30">
+                        <div 
+                          className="mb-2 sm:mb-3 border rounded-lg overflow-hidden bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => {
+                            if (doc.url) {
+                              setPreviewImageUrl(doc.url);
+                              setIsPreviewModalOpen(true);
+                            }
+                          }}
+                        >
                           {doc.url && (
                             <img 
                               src={doc.url} 
@@ -2086,11 +2124,29 @@ export default function SuperAdmin() {
                           <p className="text-[10px] sm:text-xs text-muted-foreground">
                             {new Date(doc.uploadedAt).toLocaleDateString()}
                           </p>
-                          {doc.status === 'pending' && (
-                            <Badge variant="outline" className="text-[10px] sm:text-xs">
-                              Pending
-                            </Badge>
-                          )}
+                          <div className="flex gap-2">
+                            {doc.status !== 'rejected' && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="h-7 px-2 text-[10px] text-destructive hover:text-destructive"
+                                onClick={() => handleDocumentAction(doc.id || doc._id, 'reject')}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Reject
+                              </Button>
+                            )}
+                            {doc.status !== 'approved' && (
+                              <Button 
+                                size="sm"
+                                className="h-7 px-2 text-[10px] bg-accent hover:bg-accent/90"
+                                onClick={() => handleDocumentAction(doc.id || doc._id, 'approve')}
+                              >
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -2147,20 +2203,34 @@ export default function SuperAdmin() {
               </div>
 
               {/* Actions */}
-              {!selectedDocumentUser.isVerified && selectedDocumentUser.documents?.some((d: any) => d.status === 'approved') && (
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setIsDocumentDialogOpen(false)}>
-                    Close
-                  </Button>
-                  <Button onClick={() => {
-                    handleVerifyUser(selectedDocumentUser.id);
-                    setIsDocumentDialogOpen(false);
-                  }}>
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsDocumentDialogOpen(false)}>
+                  Close
+                </Button>
+                {!selectedDocumentUser.isVerified ? (
+                  <Button 
+                    className="bg-accent hover:bg-accent/90"
+                    onClick={() => {
+                      handleVerifyUser(selectedDocumentUser.id, true);
+                      setIsDocumentDialogOpen(false);
+                    }}
+                  >
                     <Shield className="h-4 w-4 mr-2" />
                     Verify User
                   </Button>
-                </div>
-              )}
+                ) : (
+                  <Button 
+                    variant="destructive"
+                    onClick={() => {
+                      handleVerifyUser(selectedDocumentUser.id, false);
+                      setIsDocumentDialogOpen(false);
+                    }}
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Unverify User
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
