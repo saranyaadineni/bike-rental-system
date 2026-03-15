@@ -137,6 +137,12 @@
     appearance: textfield;
     -moz-appearance: textfield;
   }
+
+  /* Hide browser's default password reveal icon for specific inputs */
+  .hide-password-toggle::-ms-reveal,
+  .hide-password-toggle::-ms-clear {
+    display: none;
+  }
 }
 
 @layer utilities {

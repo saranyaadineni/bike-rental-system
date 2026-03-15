@@ -255,6 +255,7 @@ export default function Auth() {
                         id="password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="••••••••"
+                        className="hide-password-toggle pr-10"
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         required
@@ -277,11 +278,19 @@ export default function Auth() {
                         id="confirmPassword"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="••••••••"
+                        className="hide-password-toggle pr-10"
                         value={formData.confirmPassword}
                         onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                         required
                         autoComplete="new-password"
                       />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
                 </>
@@ -386,6 +395,7 @@ export default function Auth() {
                       id="password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••"
+                      className="hide-password-toggle pr-10"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       required
