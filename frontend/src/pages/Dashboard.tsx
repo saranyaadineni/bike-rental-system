@@ -143,7 +143,7 @@ export default function Dashboard() {
       // Load rentals
       try {
         const rentalsData = await rentalsAPI.getAll();
-        setRentals(rentalsData);
+        setRentals(rentalsData as any[]);
       } catch {}
       // Load documents
       try {

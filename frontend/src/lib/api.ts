@@ -152,14 +152,17 @@ export const bikesAPI = {
 
 export const rentalsAPI = {
   create: (data: any) => apiRequest<any>('/rentals', { method: 'POST', body: JSON.stringify(data) }),
-  getAll: () => apiRequest<any[]>('/rentals'),
+  getAll: async () => {
+  const data = await apiRequest<any[]>('/rentals');
+  return data || [];
+},
   getUserRentals: () => apiRequest<any[]>('/rentals'),
   update: (id: string, updates: any) => apiRequest<any>(`/rentals/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),
   updateStatus: (id: string, status: string) => 
     apiRequest<any>(`/rentals/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   startRide: (id: string) => apiRequest<any>(`/rentals/${id}/start`, { method: 'POST' }),
   completeRide: (id: string, data?: { startKm?: number; endKm?: number; delay?: number; totalCost?: number }) => 
-    apiRequest<any>(`/rentals/${id}/complete`, { method: 'POST', body: JSON.stringify(data || {}) }),
+    apiRequest<any>(`/rentals/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'completed', ...data }) }),
   end: (id: string) => apiRequest<any>(`/rentals/${id}/complete`, { method: 'POST' }),
   cancel: (id: string) => apiRequest<any>(`/rentals/${id}/cancel`, { method: 'POST' }),
   delete: (id: string) => apiRequest<void>(`/rentals/${id}`, { method: 'DELETE' }),
