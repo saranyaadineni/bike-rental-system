@@ -60,3 +60,12 @@
 {"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-01T05:32:10.031Z"}
 {"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-01T05:50:19.417Z"}
 {"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-01T06:47:49.559Z"}
+{"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-01T07:00:28.656Z"}
+{"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775027018429","stack":null,"timestamp":"2026-04-01T07:03:38.434Z"}
+{"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775027055276","stack":null,"timestamp":"2026-04-01T07:04:15.281Z"}
+{"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775027239812","stack":null,"timestamp":"2026-04-01T07:07:19.820Z"}
+{"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-01T07:09:52.890Z"}
+{"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-01T08:32:02.840Z"}
+{"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775032355306","stack":null,"timestamp":"2026-04-01T08:32:35.317Z"}
+{"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775032361007","stack":null,"timestamp":"2026-04-01T08:32:41.017Z"}
+{"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-01T08:40:08.717Z"}

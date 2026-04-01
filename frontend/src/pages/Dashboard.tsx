@@ -143,7 +143,10 @@ export default function Dashboard() {
       // Load rentals
       try {
         const rentalsData = await rentalsAPI.getAll();
-        setRentals(rentalsData as any[]);
+
+if (JSON.stringify(rentals) !== JSON.stringify(rentalsData)) {
+  setRentals(rentalsData as any[]);
+}
       } catch {}
       // Load documents
       try {
@@ -540,7 +543,7 @@ export default function Dashboard() {
                         rentals.slice(0, 3).map((rental) => {
                           const StatusIcon = rentalStatusStyles[rental.status as keyof typeof rentalStatusStyles]?.icon || Clock;
                           return (
-                            <div key={rental.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                            <div key={rental._id || rental.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
                                   <Bike className="h-5 w-5 text-secondary-foreground" />
@@ -1080,13 +1083,20 @@ export default function Dashboard() {
                     {rentals.length > 0 ? (
                       rentals.map((rental) => {
                         const StatusIcon = rentalStatusStyles[rental.status as keyof typeof rentalStatusStyles]?.icon || Clock;
-                        const bike = rental.bike || (typeof rental.bikeId === 'object' ? rental.bikeId : null);
+                        const bike = rental.bike && typeof rental.bike === 'object' ? rental.bike : null;
+                        if (!bike) {
+                           return (
+                               <div key={rental._id || rental.id} className="p-4 bg-muted/50 rounded-xl">
+                                  <p className="text-sm text-muted-foreground">Bike data not available</p>
+                                    </div>
+                                      );
+                                    }
                         const bikeName = bike?.name || 'Unknown Bike';
                         const bikeImage = bike?.image || '';
-                        const bookingId = rental.bookingId || rental.id.slice(0, 8);
+                        const bookingId = rental.bookingId || (rental._id || rental.id)?.slice(0, 8);
                         
                         return (
-                          <div key={rental.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-muted/50 gap-4">
+                          <div key={rental._id || rental.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-muted/50 gap-4">
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
                                 {bikeImage ? (
