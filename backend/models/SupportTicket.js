@@ -17,9 +17,10 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  attachments: [{
-    type: String // URLs to images
-  }],
+  attachments: {
+    type: [String],
+    default: []
+  },
   createdAt: {
     type: Date,
     default: Date.now

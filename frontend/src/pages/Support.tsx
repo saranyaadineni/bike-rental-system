@@ -314,12 +314,21 @@ function CreateTicketDialog({ open, onOpenChange, onSuccess }: { open: boolean; 
     setLoading(true);
     try {
       // Upload images first
+      console.log('Starting ticket creation with', files.length, 'files');
       const imageUrls: string[] = [];
       for (const file of files) {
-        const result = await supportAPI.upload(file);
-        imageUrls.push(result.imageUrl);
+        console.log('Uploading file:', file.name);
+        try {
+          const result = await supportAPI.upload(file);
+          console.log('Upload result for', file.name, ':', result);
+          imageUrls.push(result.imageUrl);
+        } catch (uploadError) {
+          console.error('Failed to upload file:', file.name, uploadError);
+          throw new Error(`Failed to upload ${file.name}`);
+        }
       }
 
+      console.log('Creating ticket with images:', imageUrls);
       await supportAPI.create({
         subject,
         category: category === 'other' ? customCategory : category,

@@ -15,3 +15,4 @@
 {"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775027239812","stack":null,"timestamp":"2026-04-01T07:07:19.820Z"}
 {"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775032355306","stack":null,"timestamp":"2026-04-01T08:32:35.317Z"}
 {"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775032361007","stack":null,"timestamp":"2026-04-01T08:32:41.017Z"}
+{"level":"error","message":"CastError: Cast to ObjectId failed for value \"null\" (type string) at path \"_id\" for model \"Bike\"","method":"GET","path":"/api/bikes/null?_t=1775033148929","stack":null,"timestamp":"2026-04-01T08:45:48.952Z"}

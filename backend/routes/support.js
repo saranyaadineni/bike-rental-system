@@ -114,7 +114,9 @@ router.post('/email-reply/:id', authenticateToken, async (req, res) => {
 // Upload attachment
 router.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
   try {
+    console.log('[SUPPORT UPLOAD] Request received from user:', req.user?.userId || req.user?.id);
     if (!req.file) {
+      console.warn('[SUPPORT UPLOAD] No file provided');
       return res.status(400).json({ message: 'No file provided' });
     }
 
@@ -124,6 +126,7 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     const SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
 
     if (!REGION || !BUCKET || !ACCESS_KEY_ID || !SECRET_ACCESS_KEY) {
+      console.error('[SUPPORT UPLOAD] Storage configuration missing');
       return res.status(500).json({ message: 'Storage configuration missing' });
     }
 
@@ -136,7 +139,9 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
     });
 
     const ext = req.file.originalname.split('.').pop() || 'jpg';
-    const key = `support/${req.user.userId}-${Date.now()}.${ext}`;
+    const userId = req.user?.userId || req.user?.id || 'guest';
+    const key = `support/${userId}-${Date.now()}.${ext}`;
+    console.log('[SUPPORT UPLOAD] Uploading to S3 with key:', key);
 
     const command = new PutObjectCommand({
       Bucket: BUCKET,
@@ -147,11 +152,12 @@ router.post('/upload', authenticateToken, upload.single('file'), async (req, res
 
     await s3.send(command);
     const fileUrl = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
+    console.log('[SUPPORT UPLOAD] Upload successful, file URL:', fileUrl);
 
     res.json({ imageUrl: fileUrl });
   } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ message: 'Error uploading file' });
+    console.error('[SUPPORT UPLOAD] Error:', error);
+    res.status(500).json({ message: 'Error uploading file', details: error.message });
   }
 });
 
@@ -209,9 +215,11 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { subject, category, description, rentalId, images, locationId, guestName, guestEmail } = req.body;
+    console.log('[SUPPORT CREATE] Request body:', { subject, category, rentalId, imagesCount: images?.length, locationId, hasGuestName: !!guestName });
     
     // Server-side validation
     if (category === 'contact') {
+      console.log('[SUPPORT CREATE] Validating guest contact request');
       if (!guestEmail || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(guestEmail)) {
         return res.status(400).json({ message: 'A valid email address is required.' });
       }
@@ -240,15 +248,16 @@ router.post('/', async (req, res) => {
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        console.log('Decoded token for ticket creation:', decoded);
+        console.log('[SUPPORT CREATE] Decoded token:', decoded);
         const tokenUserId = decoded.userId || decoded.id; // Support both userId and id field in token
         
         if (tokenUserId) {
           // If we have a valid ID from token, we trust it for userId
           try {
             userId = new mongoose.Types.ObjectId(tokenUserId);
+            console.log('[SUPPORT CREATE] Using userId from token:', userId);
           } catch (e) {
-            console.warn('Invalid ObjectId in token:', tokenUserId);
+            console.warn('[SUPPORT CREATE] Invalid ObjectId in token:', tokenUserId);
             userId = null;
           }
           
@@ -265,7 +274,7 @@ router.post('/', async (req, res) => {
           }
         }
       } catch (e) {
-        console.warn('Invalid token provided for ticket creation, proceeding as guest:', e.message);
+        console.warn('[SUPPORT CREATE] Invalid token provided for ticket creation, proceeding as guest:', e.message);
         userId = null; // Token invalid
       }
     }
@@ -276,9 +285,10 @@ router.post('/', async (req, res) => {
         const rental = await Rental.findById(rentalId).populate('bikeId');
         if (rental && rental.bikeId) {
           finalLocationId = rental.bikeId.locationId;
+          console.log('[SUPPORT CREATE] Found locationId from rental:', finalLocationId);
         }
       } catch (e) {
-        console.warn('Failed to fetch rental/bike for location info:', e.message);
+        console.warn('[SUPPORT CREATE] Failed to fetch rental/bike for location info:', e.message);
       }
     }
 
@@ -301,11 +311,13 @@ router.post('/', async (req, res) => {
       }]
     };
 
+    console.log('[SUPPORT CREATE] Creating ticket with data:', JSON.stringify(ticketData, null, 2));
     const ticket = new SupportTicket(ticketData);
     await ticket.save();
+    console.log('[SUPPORT CREATE] Ticket saved successfully:', ticket._id);
     res.status(201).json(ticket);
   } catch (error) {
-    console.error('Create ticket error details:', {
+    console.error('[SUPPORT CREATE] Error details:', {
       message: error.message,
       stack: error.stack,
       body: req.body
