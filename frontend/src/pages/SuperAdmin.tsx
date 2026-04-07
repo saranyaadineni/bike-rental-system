@@ -193,7 +193,6 @@ export default function SuperAdmin() {
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [homeHeroImageUrl, setHomeHeroImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
   const [newAdminForm, setNewAdminForm] = useState({
@@ -438,6 +437,12 @@ export default function SuperAdmin() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (mounted) {
+      loadData();
+    }
+  }, [selectedLocationFilter]);
+
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -471,9 +476,6 @@ export default function SuperAdmin() {
         setBikeSpecs(mergedSpecs);
       }
 
-      if (settingsData && settingsData.imageUrl) {
-        setHomeHeroImageUrl(settingsData.imageUrl);
-      }
       const normalizeUserLocationId = (user: any) => {
         if (typeof user?.locationId === 'object') {
           return user.locationId?.id || user.locationId?._id || user.locationId?.toString?.();
@@ -515,45 +517,6 @@ export default function SuperAdmin() {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setUploading(true);
-      const res = await settingsAPI.uploadImage(file);
-      if (res && res.imageUrl) {
-        setHomeHeroImageUrl(res.imageUrl);
-        toast({ title: 'Image uploaded', description: 'Preview ready. Click Save to apply.' });
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Upload Failed',
-        description: error.message || 'Failed to upload image',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSaveImage = async () => {
-    if (!homeHeroImageUrl) return;
-    try {
-      setUploading(true);
-      await settingsAPI.updateHomeHero(homeHeroImageUrl);
-      toast({ title: 'Settings Saved', description: 'Home page background updated successfully' });
-    } catch (error: any) {
-      toast({
-        title: 'Save Failed',
-        description: error.message || 'Failed to save settings',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -634,6 +597,13 @@ export default function SuperAdmin() {
   // Users are global - show only regular users
   const filteredUsers = users
     .filter((u) => u.role === 'user')
+    .filter((u) => {
+      // Filter by location if selected
+      if (selectedLocationFilter !== 'all') {
+        return getUserLocationId(u) === selectedLocationFilter;
+      }
+      return true;
+    })
     .filter((u) => {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
@@ -1019,45 +989,54 @@ export default function SuperAdmin() {
                   value: selectedLocationFilter === 'all' ? locations.length : 1,
                   icon: MapPin,
                   color: 'bg-accent',
+                  tab: 'locations',
                 },
                 {
                   label: 'Bike Models',
                   value: uniqueModelNames.length,
                   icon: Bike,
                   color: 'bg-secondary',
+                  tab: 'models',
                 },
                 {
                   label: 'Fleet Inventory',
                   value: filteredBikes.length,
                   icon: Bike,
                   color: 'gradient-hero',
+                  tab: 'models',
                 },
                 {
                   label: 'Active Bookings',
                   value: rentalsActive.length,
                   icon: Calendar,
                   color: 'bg-primary',
+                  tab: 'bookings',
                 },
                 {
                   label: 'Registered Users',
                   value: filteredUsers.length,
                   icon: Users,
                   color: 'bg-secondary',
+                  tab: 'users',
                 },
               ].map((stat) => (
-                <div key={stat.label} className="bg-card rounded-2xl shadow-card p-6">
+                <button
+                  key={stat.label}
+                  onClick={() => setTab(stat.tab as any)}
+                  className="bg-card rounded-2xl shadow-card p-6 text-left transition-all hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
                   <div className="flex items-center gap-4">
                     <div
-                      className={`w-12 h-12 rounded-xl ${stat.color} flex items-center justify-center`}
+                      className={`w-12 h-12 rounded-xl ${stat.color} flex items-center justify-center shrink-0`}
                     >
                       <stat.icon className="h-6 w-6 text-primary-foreground" />
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm text-muted-foreground truncate">{stat.label}</p>
                       <p className="text-2xl font-display font-bold">{stat.value}</p>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -3274,7 +3253,7 @@ export default function SuperAdmin() {
                         <div className="flex items-center justify-between mb-2 sm:mb-3">
                           <div className="min-w-0 flex-1 mr-2">
                             <p className="font-semibold text-sm truncate">
-                              {doc.type.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                              {doc.type.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">{doc.name}</p>
                           </div>
