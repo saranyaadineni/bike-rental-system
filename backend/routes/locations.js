@@ -92,7 +92,7 @@ router.post('/', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Create location error:', error);
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'Location already exists' });
+      return res.status(400).json({ message: 'A location with this name, city, and state already exists.' });
     }
     res.status(500).json({ message: 'Error creating location' });
   }
@@ -106,14 +106,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
+    const { name, city, state, country, isActive } = req.body;
+
+    if (!name || !city || !state) {
+      return res.status(400).json({ message: 'Required fields missing' });
+    }
+
     const location = await Location.findByIdAndUpdate(
       req.params.id,
       {
-        name: req.body.name,
-        city: req.body.city,
-        state: req.body.state,
-        country: req.body.country,
-        isActive: req.body.isActive
+        name,
+        city,
+        state,
+        country: country || 'India',
+        isActive: isActive !== undefined ? isActive : true
       },
       { new: true, runValidators: true }
     );
@@ -132,6 +138,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Update location error:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'A location with this name, city, and state already exists.' });
+    }
     res.status(500).json({ message: 'Error updating location' });
   }
 });

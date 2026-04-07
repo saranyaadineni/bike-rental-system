@@ -70,19 +70,14 @@ export function calculateRentalPrice(
   const durationHours = Math.max(0, durationMs / (1000 * 60 * 60));
 
   // Get pricing slab
-  let pricingSlab: PricingSlab | null = null;
-  if (bike.pricingSlabs && bike.pricingSlabs[pricingType]) {
-    pricingSlab = bike.pricingSlabs[pricingType];
-  } else {
+  const pricingSlab = bike.pricingSlabs ? bike.pricingSlabs[pricingType] : null;
+  
+  if (!pricingSlab) {
     // Fallback to legacy pricePerHour
     if (bike.pricePerHour) {
       return calculateLegacyPrice(bike, durationHours, actualKm);
     }
     throw new Error(`Pricing slab '${pricingType}' not found for bike ${bike.name}`);
-  }
-
-  if (!pricingSlab) {
-    throw new Error(`Pricing slab '${pricingType}' not found`);
   }
 
   // Validate duration against slab

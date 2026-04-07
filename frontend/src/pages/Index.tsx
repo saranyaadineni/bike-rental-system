@@ -132,10 +132,46 @@ export default function Index() {
       return;
     }
 
-    loadBikes();
-    loadSettings();
-    loadHeroImages();
-  }, []);
+    const loadData = async () => {
+      // loadSettings
+      try {
+        const settings = await settingsAPI.getHomeHero();
+        if (settings && settings.imageUrl) {
+          setHomeHeroImageUrl(settings.imageUrl);
+        }
+      } catch (error) {
+        console.error('Failed to load home hero settings:', error);
+      }
+
+      // loadHeroImages
+      try {
+        const images = await heroImagesAPI.getAll();
+        setHeroImages(images.filter((img) => img.isActive));
+      } catch (error) {
+        console.error('Failed to load hero images:', error);
+      }
+
+      // loadBikes
+      try {
+        const selectedLocation = localStorage.getItem('selectedLocation');
+        const data = await bikesAPI.getAll(selectedLocation || undefined);
+        setBikes(data);
+
+        if (selectedLocation) {
+          try {
+            const loc = await locationsAPI.getById(selectedLocation);
+            if (loc) setLocationName(loc.city || loc.name);
+          } catch (e) {
+            console.error('Failed to load location for SEO', e);
+          }
+        }
+      } catch (error) {
+        // Silently handle error - bikes will just be empty
+      }
+    };
+
+    loadData();
+  }, [navigate]);
 
   const loadSettings = async () => {
     try {

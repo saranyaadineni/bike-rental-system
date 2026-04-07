@@ -146,9 +146,14 @@ export const Navbar = memo(function Navbar() {
     if (nextLocationId) setSelectedLocation(nextLocationId);
   }, []);
 
+  const [user, setUser] = useState(() => getCurrentUser());
+
   useEffect(() => {
+    // Sync user state with localStorage/auth status when route changes
     const currentUser = getCurrentUser();
-    setUser(currentUser);
+    if (JSON.stringify(currentUser) !== JSON.stringify(user)) {
+      setUser(currentUser);
+    }
 
     // Load locations
     loadLocations();
@@ -164,7 +169,7 @@ export const Navbar = memo(function Navbar() {
 
       return () => clearInterval(interval);
     }
-  }, [location, loadLocations, loadActiveRide]);
+  }, [location, loadLocations, loadActiveRide, user]);
 
   const handleLocationChange = useCallback(
     async (locationId: string) => {

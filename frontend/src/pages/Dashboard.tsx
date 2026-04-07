@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -98,15 +98,18 @@ export default function Dashboard() {
     getLatestDoc(type)?.status || 'none';
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-      navigate('/auth');
-      return;
-    }
+    const load = async () => {
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        navigate('/auth');
+        return;
+      }
 
-    loadUserData();
-    loadLocations();
-  }, []);
+      await Promise.all([loadUserData(), loadLocations()]);
+    };
+
+    load();
+  }, [navigate]);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -122,7 +125,7 @@ export default function Dashboard() {
     setSearchParams(next, { replace: true });
   };
 
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     setIsLoading(true);
     try {
       const currentUser = getCurrentUser();
@@ -159,12 +162,16 @@ export default function Dashboard() {
         if (JSON.stringify(rentals) !== JSON.stringify(rentalsData)) {
           setRentals(rentalsData as any[]);
         }
-      } catch {}
+      } catch {
+        // Silently handle error
+      }
       // Load documents
       try {
         const docsData = await documentsAPI.getAll();
         setDocuments(docsData);
-      } catch {}
+      } catch {
+        // Silently handle error
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -174,7 +181,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate, rentals, toast]);
 
   const loadLocations = async () => {
     try {

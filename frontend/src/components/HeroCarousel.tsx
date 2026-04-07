@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 
 interface HeroImage {
@@ -16,17 +16,9 @@ export function HeroCarousel({ images }: HeroCarouselProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: images.length > 1,
   });
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap());
-  }, [emblaApi]);
 
   useEffect(() => {
     if (!emblaApi) return;
-    onSelect();
-    emblaApi.on('select', onSelect);
 
     // Auto-play only if multiple images
     let intervalId: NodeJS.Timeout;
@@ -37,10 +29,9 @@ export function HeroCarousel({ images }: HeroCarouselProps) {
     }
 
     return () => {
-      emblaApi.off('select', onSelect);
       if (intervalId) clearInterval(intervalId);
     };
-  }, [emblaApi, onSelect, images.length]);
+  }, [emblaApi, images.length]);
 
   if (!images || images.length === 0) return null;
 

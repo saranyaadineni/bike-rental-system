@@ -191,6 +191,7 @@ export default function SuperAdmin() {
   const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>('all');
   const [selectedDocumentUser, setSelectedDocumentUser] = useState<any>(null);
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [homeHeroImageUrl, setHomeHeroImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -633,15 +634,49 @@ export default function SuperAdmin() {
   // Users are global - show only regular users
   const filteredUsers = users
     .filter((u) => u.role === 'user')
-    .filter(
-      (u) =>
-        String(u.name || '')
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        String(u.email || '')
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())
-    )
+    .filter((u) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+
+      // Match name and email
+      const nameMatch = String(u.name || '').toLowerCase().includes(q);
+      const emailMatch = String(u.email || '').toLowerCase().includes(q);
+      if (nameMatch || emailMatch) return true;
+
+      // Match Joined Date (createdAt)
+      if (u.createdAt) {
+        const date = new Date(u.createdAt);
+        if (!isNaN(date.getTime())) {
+          const yyyy = date.getFullYear().toString();
+          const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+          const dd = date.getDate().toString().padStart(2, '0');
+
+          // Possible formats
+           const standard = `${yyyy}-${mm}-${dd}`;
+           const display = `${dd}/${mm}/${yyyy}`;
+           const monthYear = `${mm}/${yyyy}`;
+           const m = (date.getMonth() + 1).toString();
+           const d = date.getDate().toString();
+
+           const normalize = (s: string) => s.replace(/[-/.]/g, '/');
+           const qNormalized = normalize(q);
+
+           const possibleDates = [
+             normalize(standard),
+             normalize(display),
+             normalize(monthYear),
+             yyyy,
+             normalize(`${d}/${m}/${yyyy}`),
+             normalize(`${m}/${d}/${yyyy}`),
+             normalize(`${m}/${yyyy}`),
+           ];
+
+           return possibleDates.some((dateStr) => dateStr.includes(qNormalized));
+         }
+       }
+
+      return false;
+    })
     .sort((a, b) => {
       const ta = new Date(a.createdAt as any).getTime();
       const tb = new Date(b.createdAt as any).getTime();
@@ -753,6 +788,17 @@ export default function SuperAdmin() {
     (r) => r.status === 'active' || r.status === 'ongoing'
   );
   const uniqueModelNames = Array.from(new Set(filteredBikes.map((b) => b.name)));
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground animate-pulse">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return null;
@@ -1993,7 +2039,7 @@ export default function SuperAdmin() {
                 </div>
               </div>
             );
-          })}
+          })()}
 
         {/* Reuse Admin tabs for bikes/users/documents/locations */}
 
@@ -2480,20 +2526,20 @@ export default function SuperAdmin() {
                     <Button
                       className="flex-1"
                       onClick={async () => {
-                        if (!locationForm.name.trim()) {
+                        if (!locationForm.name.trim() || !locationForm.city.trim() || !locationForm.state.trim()) {
                           toast({
                             title: 'Error',
-                            description: 'Location name is required',
+                            description: 'All fields (Name, City, State) are required',
                             variant: 'destructive',
                           });
                           return;
                         }
 
-                        // Default city/state to name if empty
                         const finalForm = {
                           ...locationForm,
-                          city: locationForm.city || locationForm.name,
-                          state: locationForm.state || locationForm.name,
+                          name: locationForm.name.trim(),
+                          city: locationForm.city.trim(),
+                          state: locationForm.state.trim(),
                         };
 
                         try {
@@ -2502,33 +2548,38 @@ export default function SuperAdmin() {
                             const exists = locations.some(
                               (l) =>
                                 l.id !== editingLocation.id &&
-                                l.name.toLowerCase() === finalForm.name.toLowerCase()
+                                l.name.toLowerCase() === finalForm.name.toLowerCase() &&
+                                l.city.toLowerCase() === finalForm.city.toLowerCase() &&
+                                l.state.toLowerCase() === finalForm.state.toLowerCase()
                             );
                             if (exists) {
                               toast({
                                 title: 'Error',
-                                description: 'Location with this name already exists',
+                                description: 'A location with this name, city, and state already exists',
                                 variant: 'destructive',
                               });
                               return;
                             }
                             await locationsAPI.update(editingLocation.id, finalForm);
-                            toast({ title: 'Location updated' });
+                            toast({ title: 'Location updated successfully' });
                           } else {
                             // Frontend check for duplicates
                             const exists = locations.some(
-                              (l) => l.name.toLowerCase() === finalForm.name.toLowerCase()
+                              (l) =>
+                                l.name.toLowerCase() === finalForm.name.toLowerCase() &&
+                                l.city.toLowerCase() === finalForm.city.toLowerCase() &&
+                                l.state.toLowerCase() === finalForm.state.toLowerCase()
                             );
                             if (exists) {
                               toast({
                                 title: 'Error',
-                                description: 'Location with this name already exists',
+                                description: 'A location with this name, city, and state already exists',
                                 variant: 'destructive',
                               });
                               return;
                             }
                             await locationsAPI.create(finalForm);
-                            toast({ title: 'Location created' });
+                            toast({ title: 'Location created successfully' });
                           }
                           setLocationDialogOpen(false);
                           setEditingLocation(null);

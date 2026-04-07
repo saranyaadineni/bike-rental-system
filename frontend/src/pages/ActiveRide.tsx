@@ -63,11 +63,16 @@ export default function ActiveRide() {
       return;
     }
 
-    loadActiveRide(user);
+    const load = async () => {
+      await loadActiveRide(user);
+    };
+
+    load();
+
     return () => {
       stopCamera();
     };
-  }, []);
+  }, [navigate]);
 
   const startCamera = async () => {
     try {

@@ -4,7 +4,6 @@ const locationSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
   },
   city: {
     type: String,
@@ -25,6 +24,8 @@ const locationSchema = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+locationSchema.index({ name: 1, city: 1, state: 1 }, { unique: true });
 
 const Location = mongoose.model('Location', locationSchema);
 

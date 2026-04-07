@@ -18,6 +18,53 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     let query = {};
+    const { q } = req.query;
+
+    if (q) {
+      const searchRegex = new RegExp(escapeRegex(q), 'i');
+      query.$or = [
+        { name: searchRegex },
+        { email: searchRegex }
+      ];
+
+      // Try parsing date from query
+      const dateParts = q.split(/[-/]/);
+      if (dateParts.length > 0) {
+        // Handle YYYY-MM-DD, DD/MM/YYYY, MM/YYYY, YYYY
+        let dateQuery = null;
+        if (dateParts.length === 3) {
+          // YYYY-MM-DD or DD/MM/YYYY
+          let year, month, day;
+          if (dateParts[0].length === 4) {
+            [year, month, day] = dateParts;
+          } else {
+            [day, month, year] = dateParts;
+          }
+          if (year && month && day) {
+            const startDate = new Date(year, month - 1, day);
+            const endDate = new Date(year, month - 1, parseInt(day) + 1);
+            dateQuery = { createdAt: { $gte: startDate, $lt: endDate } };
+          }
+        } else if (dateParts.length === 2) {
+          // MM/YYYY
+          const [month, year] = dateParts;
+          const startDate = new Date(year, month - 1, 1);
+          const endDate = new Date(year, month, 1);
+          dateQuery = { createdAt: { $gte: startDate, $lt: endDate } };
+        } else if (dateParts.length === 1 && dateParts[0].length === 4) {
+          // YYYY
+          const year = dateParts[0];
+          const startDate = new Date(year, 0, 1);
+          const endDate = new Date(parseInt(year) + 1, 0, 1);
+          dateQuery = { createdAt: { $gte: startDate, $lt: endDate } };
+        }
+
+        if (dateQuery) {
+          query.$or.push(dateQuery);
+        }
+      }
+    }
+
     if (currentUser.role === 'admin' && currentUser.locationId) {
       try {
         const loc = await Location.findById(currentUser.locationId).select('city');

@@ -456,7 +456,7 @@ export default function RideFinder() {
     const end = dropoffDT || new Date(`${dropoffDate}T${dropoffTime}`);
     const hours = durationHours;
 
-    let totalAmount = 0;
+    let finalCalculatedAmount: number;
     try {
       // Try new simple pricing model first
       const hasIndividualRates = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].some(
@@ -474,15 +474,15 @@ export default function RideFinder() {
         hasTariff
       ) {
         const priceInfo = calculateSimplePrice(selectedBike, start, end);
-        totalAmount = Math.round(priceInfo.total);
+        finalCalculatedAmount = Math.round(priceInfo.total);
       } else {
         // Fallback to legacy pricing slabs
         const priceInfo = calculateRentalPrice(selectedBike, start, end, selectedPricingType);
-        totalAmount = Math.round(priceInfo.total);
+        finalCalculatedAmount = Math.round(priceInfo.total);
       }
     } catch (error: any) {
       // Fallback to legacy calculation
-      totalAmount = Math.round((selectedBike.pricePerHour || 0) * hours);
+      finalCalculatedAmount = Math.round((selectedBike.pricePerHour || 0) * hours);
       toast({
         title: 'Pricing Warning',
         description: error.message || 'Using default pricing calculation',
@@ -498,7 +498,7 @@ export default function RideFinder() {
           pickupTime: start.toISOString(),
           dropoffTime: end.toISOString(),
           durationHours: hours,
-          totalAmount,
+          totalAmount: finalCalculatedAmount,
           pricingType: selectedPricingType,
         },
       },

@@ -155,12 +155,11 @@ export default function Auth() {
     }
 
     if (errors.length > 0) {
-      let finalMessage = '';
-      if (isLogin && errors.includes('invalid email') && errors.includes('invalid password')) {
-        finalMessage = 'invalid email and password';
-      } else {
-        finalMessage = errors.join(', ');
-      }
+      const finalMessage =
+        isLogin && errors.includes('invalid email') && errors.includes('invalid password')
+          ? 'invalid email and password'
+          : errors.join(', ');
+
       toast({ title: 'Error', description: finalMessage, variant: 'destructive' });
       return;
     }

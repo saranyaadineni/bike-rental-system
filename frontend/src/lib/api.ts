@@ -203,7 +203,12 @@ export const rentalsAPI = {
 };
 
 export const usersAPI = {
-  getAll: () => apiRequest<any[]>(`/users?_t=${Date.now()}`),
+  getAll: (q?: string) => {
+    const params = new URLSearchParams();
+    params.set('_t', String(Date.now()));
+    if (q) params.set('q', q);
+    return apiRequest<any[]>(`/users?${params.toString()}`);
+  },
   getById: (id: string) => apiRequest<any>(`/users/${id}?_t=${Date.now()}`),
   update: (id: string, updates: any) =>
     apiRequest<any>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(updates) }),

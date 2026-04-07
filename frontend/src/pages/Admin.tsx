@@ -2979,7 +2979,6 @@ export default function Admin() {
 
               let distancePrice = 0;
               let delayPrice = 0;
-              let totalPrice = 0;
 
               if (!isNaN(startKm) && !isNaN(endKm) && bike && bike.excessKmCharge && bike.kmLimit) {
                 const totalKm = Math.max(0, endKm - startKm);
@@ -2993,10 +2992,8 @@ export default function Admin() {
                 delayPrice = delayHours * hourlyRate;
               }
 
-              totalPrice = distancePrice + delayPrice;
-
-              // Show bill if we have meter readings or delay, even if charges are 0
               if ((!isNaN(startKm) && !isNaN(endKm)) || (!isNaN(delayHours) && delayHours > 0)) {
+                const finalTotalPrice = distancePrice + delayPrice;
                 return (
                   <div className="grid gap-2 border-t pt-4 mt-2">
                     <Label className="text-base font-semibold">Total Price</Label>
@@ -3016,7 +3013,7 @@ export default function Admin() {
                       <div className="flex justify-between items-center pt-2 border-t">
                         <span className="text-base font-semibold">Total</span>
                         <span className="text-base font-bold text-primary">
-                          ₹{totalPrice.toFixed(2)}
+                          ₹{finalTotalPrice.toFixed(2)}
                         </span>
                       </div>
                     </div>

@@ -13,9 +13,27 @@ export default function Garage() {
   const [bikes, setBikes] = useState<Bike[]>([]);
   const [cityName, setCityName] = useState<string>('Your City');
   const [docStatus, setDocStatus] = useState({ allApproved: false, hasDocs: false });
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn] = useState(() => !!getCurrentUser());
 
   useEffect(() => {
+    const checkDocs = async () => {
+      const user = getCurrentUser();
+      if (!user) return;
+      try {
+        const userDocs = await documentsAPI.getAll();
+        const requiredTypes = ['aadhar_front', 'aadhar_back', 'pan', 'driving_license'];
+        const approvedTypes = (userDocs || [])
+          .filter((doc: any) => doc.status === 'approved')
+          .map((doc: any) => doc.type);
+
+        const allApproved = requiredTypes.every((type) => approvedTypes.includes(type));
+        const hasDocs = userDocs && userDocs.length > 0;
+        setDocStatus({ allApproved, hasDocs });
+      } catch (error) {
+        console.error('Failed to check documents', error);
+      }
+    };
+
     const load = async () => {
       try {
         const selectedLocation = localStorage.getItem('selectedLocation') || undefined;
@@ -29,11 +47,11 @@ export default function Garage() {
         setBikes([]);
       }
     };
+
     load();
     const user = getCurrentUser();
-    setIsLoggedIn(!!user);
     if (user) {
-      checkDocuments();
+      checkDocs();
     }
   }, []);
 

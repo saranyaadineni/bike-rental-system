@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -105,23 +105,27 @@ export default function Support() {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadTickets();
+    const load = async () => {
+      await loadTickets();
+    };
+
+    load();
   }, []);
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     try {
       const data = await supportAPI.getAll();
       setTickets(data);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to load support tickets',
+        description: error.message || 'Failed to load support tickets',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const handleTicketCreated = () => {
     loadTickets();
@@ -392,7 +396,10 @@ function CreateTicketDialog({
           imageUrls.push(result.imageUrl);
         } catch (uploadError) {
           console.error('Failed to upload file:', file.name, uploadError);
-          throw new Error(`Failed to upload ${file.name}`);
+          const error = new Error(`Failed to upload ${file.name}`);
+          // @ts-ignore - 'cause' property is ES2022 but we target ES2020
+          error.cause = uploadError;
+          throw error;
         }
       }
 
@@ -414,8 +421,12 @@ function CreateTicketDialog({
       setSelectedRentalId('none');
       setFiles([]);
       onSuccess();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to create ticket', variant: 'destructive' });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create ticket',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -639,8 +650,12 @@ function TicketDetailSheet({
       setFiles([]);
       setCurrentTicket(updatedTicket);
       onUpdate(updatedTicket);
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send message',
+        variant: 'destructive',
+      });
     } finally {
       setSending(false);
     }
