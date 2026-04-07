@@ -74,9 +74,7 @@ async function apiRequest<T>(path: string, init: RequestInit = {}, isPublic = fa
           setAuthToken(null);
           localStorage.removeItem('currentUser');
         }
-        const error = new Error(`Authentication failed: ${response.status}`);
-        (error as any).status = response.status;
-        throw error;
+        // Do not throw a generic 401 error here, let the general error handling below catch the specific message
       }
       
       if (response.status === 403) {
