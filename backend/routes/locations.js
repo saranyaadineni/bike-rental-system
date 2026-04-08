@@ -6,6 +6,60 @@ import { logErrorIfNotConnection } from '../utils/errorHandler.js';
 
 const router = express.Router();
 
+const STATE_CITY_DATA = {
+  'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Tirupati'],
+  'Arunachal Pradesh': ['Itanagar', 'Tawang', 'Ziro', 'Pasighat'],
+  'Assam': ['Guwahati', 'Dibrugarh', 'Silchar', 'Jorhat'],
+  'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur'],
+  'Chhattisgarh': ['Raipur', 'Bhilai', 'Bilaspur'],
+  'Goa': ['Panaji', 'Margao', 'Vasco da Gama', 'Mapusa'],
+  'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar'],
+  'Haryana': ['Gurgaon', 'Faridabad', 'Panipat', 'Ambala'],
+  'Himachal Pradesh': ['Shimla', 'Manali', 'Dharamshala'],
+  'Jharkhand': ['Ranchi', 'Jamshedpur', 'Dhanbad'],
+  'Karnataka': ['Bangalore', 'Mysore', 'Hubli', 'Mangalore', 'Belgaum'],
+  'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur'],
+  'Madhya Pradesh': ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior'],
+  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad'],
+  'Manipur': ['Imphal'],
+  'Meghalaya': ['Shillong'],
+  'Mizoram': ['Aizawl'],
+  'Nagaland': ['Kohima', 'Dimapur'],
+  'Odisha': ['Bhubaneswar', 'Cuttack', 'Rourkela'],
+  'Punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala'],
+  'Rajasthan': ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer'],
+  'Sikkim': ['Gangtok'],
+  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem'],
+  'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar'],
+  'Tripura': ['Agartala'],
+  'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut'],
+  'Uttarakhand': ['Dehradun', 'Haridwar', 'Roorkee'],
+  'West Bengal': ['Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri'],
+  'Delhi': ['New Delhi', 'North Delhi', 'South Delhi', 'East Delhi', 'West Delhi'],
+  'Puducherry': ['Puducherry'],
+};
+
+const validateLocationData = (name, city, state) => {
+  if (!name || !city || !state) return 'Required fields missing';
+  
+  // Validate name format (alphabets and spaces only)
+  if (!/^[a-zA-Z\s]+$/.test(name)) {
+    return 'Location name must contain only alphabets and spaces';
+  }
+
+  // Validate state
+  if (!STATE_CITY_DATA[state]) {
+    return 'Invalid state selected';
+  }
+
+  // Validate city-state relationship
+  if (!STATE_CITY_DATA[state].includes(city)) {
+    return `City '${city}' does not belong to the state '${state}'`;
+  }
+
+  return null;
+};
+
 // Get all locations (public)
 router.get('/', async (req, res) => {
   try {
@@ -69,8 +123,9 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const { name, city, state, country } = req.body;
 
-    if (!name || !city || !state) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    const validationError = validateLocationData(name, city, state);
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
     }
 
     const newLocation = new Location({
@@ -108,8 +163,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     const { name, city, state, country, isActive } = req.body;
 
-    if (!name || !city || !state) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    const validationError = validateLocationData(name, city, state);
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
     }
 
     const location = await Location.findByIdAndUpdate(

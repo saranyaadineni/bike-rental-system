@@ -37,7 +37,6 @@ const formatLocationDisplay = (loc: any): string => {
 
 export const Navbar = memo(function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [activeRide, setActiveRide] = useState<any>(null);

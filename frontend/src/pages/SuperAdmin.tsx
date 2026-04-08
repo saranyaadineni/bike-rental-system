@@ -163,13 +163,46 @@ const superAdminTabIds = [
   'locations',
 ] as const;
 
+const STATE_CITY_DATA: Record<string, string[]> = {
+  'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Kurnool', 'Tirupati'],
+  'Arunachal Pradesh': ['Itanagar', 'Tawang', 'Ziro', 'Pasighat'],
+  'Assam': ['Guwahati', 'Dibrugarh', 'Silchar', 'Jorhat'],
+  'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur'],
+  'Chhattisgarh': ['Raipur', 'Bhilai', 'Bilaspur'],
+  'Goa': ['Panaji', 'Margao', 'Vasco da Gama', 'Mapusa'],
+  'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar'],
+  'Haryana': ['Gurgaon', 'Faridabad', 'Panipat', 'Ambala'],
+  'Himachal Pradesh': ['Shimla', 'Manali', 'Dharamshala'],
+  'Jharkhand': ['Ranchi', 'Jamshedpur', 'Dhanbad'],
+  'Karnataka': ['Bangalore', 'Mysore', 'Hubli', 'Mangalore', 'Belgaum'],
+  'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur'],
+  'Madhya Pradesh': ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior'],
+  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad'],
+  'Manipur': ['Imphal'],
+  'Meghalaya': ['Shillong'],
+  'Mizoram': ['Aizawl'],
+  'Nagaland': ['Kohima', 'Dimapur'],
+  'Odisha': ['Bhubaneswar', 'Cuttack', 'Rourkela'],
+  'Punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala'],
+  'Rajasthan': ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer'],
+  'Sikkim': ['Gangtok'],
+  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem'],
+  'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar'],
+  'Tripura': ['Agartala'],
+  'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut'],
+  'Uttarakhand': ['Dehradun', 'Haridwar', 'Roorkee'],
+  'West Bengal': ['Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri'],
+  'Delhi': ['New Delhi', 'North Delhi', 'South Delhi', 'East Delhi', 'West Delhi'],
+  'Puducherry': ['Puducherry'],
+};
+
 const LAST_ADMIN_CITY_STORAGE_KEY = 'superadmin.lastAdminCity';
 
-// Helper function to format location name for display (removes "Main Garage" suffix)
+// Helper function to format location name for display
 const formatLocationDisplay = (loc: any): string => {
   if (!loc) return '';
-  // Show only the city name as per requirement
-  return loc.city || loc.name || '';
+  // Prioritize actual location name over city
+  return loc.name || loc.city || '';
 };
 
 export default function SuperAdmin() {
@@ -2415,7 +2448,10 @@ export default function SuperAdmin() {
                 <div key={loc.id} className="border rounded-lg p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="font-medium">{formatLocationDisplay(loc)}</p>
+                      <p className="font-display font-semibold text-lg">{loc.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {loc.city}, {loc.state}
+                      </p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
                       <Button
@@ -2482,24 +2518,54 @@ export default function SuperAdmin() {
                     <Input
                       placeholder="Location Name"
                       value={locationForm.name}
-                      onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium">City</Label>
-                    <Input
-                      placeholder="City"
-                      value={locationForm.city}
-                      onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '' || /^[a-zA-Z\s]*$/.test(value)) {
+                          setLocationForm({ ...locationForm, name: value });
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">State</Label>
-                    <Input
-                      placeholder="State"
+                    <Select
                       value={locationForm.state}
-                      onChange={(e) => setLocationForm({ ...locationForm, state: e.target.value })}
-                    />
+                      onValueChange={(v) => {
+                        setLocationForm({ ...locationForm, state: v, city: '' });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select State" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(STATE_CITY_DATA)
+                          .sort()
+                          .map((state) => (
+                            <SelectItem key={state} value={state}>
+                              {state}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">City</Label>
+                    <Select
+                      value={locationForm.city}
+                      onValueChange={(v) => setLocationForm({ ...locationForm, city: v })}
+                      disabled={!locationForm.state}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select City" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(STATE_CITY_DATA[locationForm.state] || []).map((city) => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex gap-2 pt-4">
                     <Button
