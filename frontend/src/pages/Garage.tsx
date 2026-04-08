@@ -41,7 +41,7 @@ export default function Garage() {
         setBikes(data || []);
         if (selectedLocation) {
           const loc = await locationsAPI.getById(selectedLocation);
-          setCityName(loc?.city || loc?.name || 'Your City');
+          setCityName(loc?.name || loc?.city || 'Your City');
         }
       } catch {
         setBikes([]);
@@ -98,7 +98,7 @@ export default function Garage() {
       if (!allVerified) {
         toast({
           title: 'Verification Required',
-          description: 'All documents must be uploaded and verified before booking a ride.',
+          description: 'Please upload and verify documents to continue.',
           variant: 'destructive',
         });
         navigate('/dashboard?tab=documents');

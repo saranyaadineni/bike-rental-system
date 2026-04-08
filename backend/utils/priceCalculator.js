@@ -76,7 +76,11 @@ export function getPricingSlab(bike, durationHours) {
  */
 export function calculateRentalPrice(bike, startDate, endDate, pricingType, actualKm = null) {
   const durationMs = endDate.getTime() - startDate.getTime();
-  const durationHours = Math.max(0, durationMs / (1000 * 60 * 60));
+  const durationHours = durationMs / (1000 * 60 * 60);
+
+  if (durationHours <= 0) {
+    throw new Error('Drop-off time must be after pick-up time');
+  }
 
   // Get pricing slab
   let pricingSlab = null;

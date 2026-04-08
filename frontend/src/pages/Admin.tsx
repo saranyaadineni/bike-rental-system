@@ -48,6 +48,7 @@ import {
   locationsAPI,
 } from '@/lib/api';
 import { Bike as BikeType } from '@/types';
+import { safeAsync } from '@/lib/errorHandler';
 import { SupportManager } from '@/components/admin/SupportManager';
 import { useTheme } from 'next-themes';
 import {
@@ -143,11 +144,11 @@ const adminTabIds = [
   'support',
 ] as const;
 
-// Helper function to format location name for display (removes "Main Garage" suffix)
+// Helper function to format location name for display
 const formatLocationDisplay = (loc: Location | null | undefined): string => {
   if (!loc) return '';
-  // Show only the city name as per requirement
-  return loc.city || loc.name || '';
+  // Show only the location name as per requirement
+  return loc.name || loc.city || '';
 };
 
 // Helper to get local ISO string for datetime-local input
@@ -521,13 +522,19 @@ export default function Admin() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const current = getCurrentUser();
+      // Fetch fresh profile to get the most up-to-date locationId
+      const current = await safeAsync(() => authAPI.getCurrentUser(), null, 'loadAdminProfile');
+      if (!current) {
+        navigate('/auth');
+        return;
+      }
+      setCurrentUser(current);
+
       const assignedLocationId =
         typeof current?.locationId === 'object'
           ? current.locationId?.id || current.locationId?._id || current.locationId?.toString?.()
           : current?.locationId;
 
-      // For admins, we MUST use their assigned location, ignore localStorage
       let normalizedLocationId = assignedLocationId;
 
       try {
@@ -538,8 +545,23 @@ export default function Admin() {
         if (assignedLocationId && ids.has(assignedLocationId)) {
           normalizedLocationId = assignedLocationId;
           localStorage.setItem('selectedLocation', assignedLocationId);
-        } else {
-          // If no assigned location or invalid, fallback to localStorage but admins should have one
+        } else if (assignedLocationId) {
+          // If admin has an assigned location but it's not in the 'active' list, 
+          // we should still try to fetch it directly to ensure data isolation.
+          try {
+            const directLoc = await locationsAPI.getById(assignedLocationId);
+            if (directLoc) {
+              setLocations(prev => [...prev, directLoc]);
+              normalizedLocationId = assignedLocationId;
+              localStorage.setItem('selectedLocation', assignedLocationId);
+            }
+          } catch (e) {
+            console.error('Failed to fetch assigned location directly', e);
+          }
+        }
+        
+        // Only fallback if absolutely no assigned location is found
+        if (!normalizedLocationId) {
           const rawSavedLocation = localStorage.getItem('selectedLocation') || '';
           if (rawSavedLocation && ids.has(rawSavedLocation)) {
             normalizedLocationId = rawSavedLocation;

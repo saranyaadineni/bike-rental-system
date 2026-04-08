@@ -34,6 +34,7 @@ import {
 import { calculateRentalPrice, getAvailablePricingSlabs } from '@/utils/priceCalculator';
 import { calculateSimplePrice } from '@/utils/simplePriceCalculator';
 import { SEO } from '@/components/SEO';
+import { validateTimeRange } from '@/utils/timeValidation';
 
 const bikeTypes = [
   { value: 'all', label: 'All Models', icon: null },
@@ -101,7 +102,7 @@ export default function RideFinder() {
       if (savedLocation) {
         try {
           const loc = await locationsAPI.getById(savedLocation);
-          if (loc) setLocationName(loc.city || loc.name);
+          if (loc) setLocationName(loc.name || loc.city);
         } catch (e) {
           console.error('Failed to load location for SEO', e);
         }
@@ -188,15 +189,28 @@ export default function RideFinder() {
     return dt;
   }, [dropoffDate, dropoffTime]);
 
+  // Validation and duration calculation
+  const validationResult = useMemo(() => {
+    return validateTimeRange(pickupDate, pickupTime, dropoffDate, dropoffTime);
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
+
+  const areAllTimeFieldsFilled = useMemo(() => {
+    return !!(pickupDate && pickupTime && dropoffDate && dropoffTime);
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
+
   // Calculate total duration in minutes
   const durationMinutes = useMemo(() => {
-    if (!pickupDT || !dropoffDT) return 0;
-    const diff = dropoffDT.getTime() - pickupDT.getTime();
-    if (isNaN(diff)) return 0;
-    return Math.max(0, Math.round(diff / 60000));
-  }, [pickupDT, dropoffDT]);
+    return validationResult.isValid ? validationResult.durationMinutes : 0;
+  }, [validationResult]);
 
-  const durationHours = useMemo(() => durationMinutes / 60, [durationMinutes]);
+  const durationHours = useMemo(() => validationResult.isValid ? validationResult.durationHours : 0, [validationResult]);
+
+  // Clear bike results if invalid time is selected
+  useEffect(() => {
+    if (!validationResult.isValid && bikes.length > 0 && pickupDate && pickupTime && dropoffDate && dropoffTime) {
+      setBikes([]);
+    }
+  }, [validationResult.isValid, bikes.length, pickupDate, pickupTime, dropoffDate, dropoffTime]);
 
   // Calculate max pickup date (7 days from today) - use useMemo to ensure it updates
   const maxPickupDate = useMemo(() => {
@@ -281,28 +295,25 @@ export default function RideFinder() {
   );
 
   const applyTimeFilter = () => {
-    if (!pickupDate || !pickupTime || !dropoffDate || !dropoffTime) {
+    if (!validationResult.isValid) {
+      toast({
+        title: 'Invalid Time Range',
+        description: validationResult.error || 'Please select a valid time range.',
+        variant: 'destructive',
+      });
       return;
     }
-    const sameDay = pickupDate === dropoffDate;
-    if (pickupDT && dropoffDT && dropoffDT.getTime() <= pickupDT.getTime()) {
-      const adjusted = new Date(pickupDT.getTime() + 30 * 60000);
-      setDropoffDate(adjusted.toISOString().slice(0, 10));
-      setDropoffTime(adjusted.toTimeString().slice(0, 5));
-      return;
-    }
-    if (sameDay && durationMinutes < 30 && pickupDT) {
-      const adjusted = new Date(pickupDT.getTime() + 30 * 60000);
-      setDropoffTime(adjusted.toTimeString().slice(0, 5));
-      return;
-    }
+    // With valid time range, results will be filtered automatically if API is called.
+    // We already clear bikes in useEffect if validationResult.isValid is false.
+    // Triggering search again with new valid times.
+    searchAvailable();
   };
 
   const searchAvailable = async () => {
-    if (!pickupDate || !pickupTime || !dropoffDate || !dropoffTime) {
+    if (!validationResult.isValid) {
       toast({
-        title: 'Select Date & Time',
-        description: 'Please choose pickup and dropoff.',
+        title: 'Invalid Time Range',
+        description: validationResult.error || 'Please select a valid time range.',
         variant: 'destructive',
       });
       return;
@@ -356,7 +367,7 @@ export default function RideFinder() {
       if (!allVerified) {
         toast({
           title: 'Verification Required',
-          description: 'All documents must be uploaded and verified before booking a ride.',
+          description: 'Please upload and verify documents to continue.',
           variant: 'destructive',
         });
         navigate('/dashboard?tab=documents');
@@ -388,6 +399,15 @@ export default function RideFinder() {
 
   const handleBookingConfirm = async () => {
     if (!selectedBike || !pickupDate || !pickupTime || !dropoffDate || !dropoffTime) return;
+
+    if (!validationResult.isValid) {
+      toast({
+        title: 'Invalid Time Range',
+        description: validationResult.error || 'Please select a valid time range.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const user = getCurrentUser();
     if (!user) {
@@ -711,11 +731,22 @@ export default function RideFinder() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button size="sm" className="flex-1" onClick={applyTimeFilter}>
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={applyTimeFilter}
+                      disabled={!validationResult.isValid}
+                    >
                       Apply filter
                     </Button>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {durationMinutes ? `${durationMinutes} Minutes` : '0 Minutes'}
+                    <div
+                      className={`text-xs whitespace-nowrap ${!validationResult.isValid && areAllTimeFieldsFilled ? 'text-destructive' : 'text-muted-foreground'}`}
+                    >
+                      {!validationResult.isValid && areAllTimeFieldsFilled
+                        ? 'Invalid Range'
+                        : durationMinutes
+                          ? `${durationMinutes} Minutes`
+                          : '0 Minutes'}
                     </div>
                   </div>
                 </div>
@@ -833,8 +864,14 @@ export default function RideFinder() {
               <Button variant="ghost" size="sm" onClick={() => setIsSearchDialogOpen(true)}>
                 FILTER
               </Button>
-              <div className="text-xs text-muted-foreground">
-                {durationMinutes ? `${durationMinutes} Minutes` : '0 Minutes'}
+              <div
+                className={`text-xs whitespace-nowrap ${!validationResult.isValid && areAllTimeFieldsFilled ? 'text-destructive' : 'text-muted-foreground'}`}
+              >
+                {!validationResult.isValid && areAllTimeFieldsFilled
+                  ? 'Invalid Range'
+                  : durationMinutes
+                    ? `${durationMinutes} Minutes`
+                    : '0 Minutes'}
               </div>
             </div>
           </div>
@@ -932,7 +969,11 @@ export default function RideFinder() {
                     </Select>
                   </div>
                 </div>
-                <Button className="w-full" onClick={searchAvailable}>
+                <Button
+                  className="w-full"
+                  onClick={searchAvailable}
+                  disabled={!validationResult.isValid}
+                >
                   Search
                 </Button>
               </div>
@@ -1053,8 +1094,12 @@ export default function RideFinder() {
                           </div>
                           <div>
                             <span className="text-muted-foreground block">Duration</span>
-                            <span className="font-medium">
-                              {Math.round(hours)} hours ({durationMinutes} mins)
+                            <span
+                              className={`font-medium ${!validationResult.isValid ? 'text-destructive' : ''}`}
+                            >
+                              {!validationResult.isValid
+                                ? 'Invalid Range'
+                                : `${Math.round(hours)} hours (${durationMinutes} mins)`}
                             </span>
                           </div>
                           <div>
@@ -1102,7 +1147,11 @@ export default function RideFinder() {
                         >
                           Cancel
                         </Button>
-                        <Button className="w-full" onClick={handleBookingConfirm}>
+                        <Button
+                          className="w-full"
+                          onClick={handleBookingConfirm}
+                          disabled={!validationResult.isValid}
+                        >
                           Confirm Booking
                         </Button>
                       </div>

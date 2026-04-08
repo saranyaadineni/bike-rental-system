@@ -52,8 +52,8 @@ const statusStyles = {
 
 const formatLocationDisplay = (loc: any): string => {
   if (!loc) return '';
-  // Show only the city name as per requirement
-  return loc.city || loc.name || '';
+  // Show only the location name as per requirement
+  return loc.name || loc.city || '';
 };
 
 export default function Dashboard() {

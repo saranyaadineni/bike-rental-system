@@ -83,6 +83,24 @@ router.post('/verify', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Signature mismatch' });
     }
     const { bikeId, pickupTime, dropoffTime, totalAmount, pricingType = 'hourly', selectedLocationId, additionalImages } = bookingDetails || {};
+
+    // Validate time range
+    if (!pickupTime || !dropoffTime) {
+      return res.status(400).json({ success: false, message: 'Pickup and dropoff times are required.' });
+    }
+    const start = new Date(pickupTime);
+    const end = new Date(dropoffTime);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid pickup or dropoff time format.' });
+    }
+    if (end <= start) {
+      return res.status(400).json({ success: false, message: 'Drop-off time must be after pick-up time.' });
+    }
+    const now = new Date();
+    if (start < new Date(now.getTime() - 15 * 60000)) { // 15 min buffer
+      return res.status(400).json({ success: false, message: 'Pick-up time cannot be in the past.' });
+    }
+
     const bike = await Bike.findById(bikeId).populate('locationId');
     if (!bike) return res.status(404).json({ success: false, message: 'Bike not found' });
     

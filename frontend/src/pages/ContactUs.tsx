@@ -45,7 +45,7 @@ export default function ContactUs() {
 
         if (location) {
           setSelectedLocationId(location.id);
-          const displayLocation = location.city || location.name;
+          const displayLocation = location.name || location.city;
           setLocationName(displayLocation);
 
           const emailPrefix = displayLocation.toLowerCase().replace(/\s+/g, '');

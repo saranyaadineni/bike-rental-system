@@ -40,7 +40,11 @@ export function calculateSimplePrice(
   endDate: Date
 ): SimplePriceBreakdown {
   const durationMs = endDate.getTime() - startDate.getTime();
-  const durationHours = Math.max(0, durationMs / (1000 * 60 * 60));
+  const durationHours = durationMs / (1000 * 60 * 60);
+
+  if (durationHours <= 0) {
+    throw new Error('Drop-off time must be after pick-up time');
+  }
 
   // Check if we have the new pricing fields
   const hasPrice12Hours = bike.price12Hours && bike.price12Hours > 0;

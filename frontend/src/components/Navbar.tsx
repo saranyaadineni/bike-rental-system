@@ -28,11 +28,11 @@ import { safeAsync, isAuthError } from '@/lib/errorHandler';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/hooks/use-toast';
 
-// Helper function to format location name for display (removes "Main Garage" suffix)
+// Helper function to format location name for display
 const formatLocationDisplay = (loc: any): string => {
   if (!loc) return '';
-  // Show only the city name as per requirement
-  return loc.city || loc.name || '';
+  // Show only the location name as per requirement
+  return loc.name || loc.city || '';
 };
 
 export const Navbar = memo(function Navbar() {

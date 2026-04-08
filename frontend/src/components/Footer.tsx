@@ -15,7 +15,7 @@ export const Footer = memo(function Footer() {
         const locations = await safeAsync(() => locationsAPI.getAll(), [], 'footerLoadLocations');
         const loc = locations.find((l: Location) => l.id === selectedId);
         if (loc) {
-          setLocationName(loc.city || loc.name || '');
+          setLocationName(loc.name || loc.city || '');
         }
       }
     };

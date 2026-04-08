@@ -14,8 +14,12 @@ const router = express.Router();
 router.get('/', authenticateToken, catchAsync(async (req, res) => {
   const query = {};
 
+  // If regular user, only show their rentals
+  if (req.user && !['admin', 'superadmin'].includes(req.user.role)) {
+    query.userId = req.user.userId;
+  }
   // For admin users, strictly enforce their assigned location
-  if (req.user && req.user.role === 'admin' && req.user.locationId) {
+  else if (req.user && req.user.role === 'admin' && req.user.locationId) {
     // We need to filter by bikeId.locationId
     const bikesAtLocation = await Bike.find({ locationId: req.user.locationId }).select('_id');
     const bikeIds = bikesAtLocation.map(b => b._id);
@@ -56,8 +60,39 @@ router.post('/', catchAsync(async (req, res) => {
     throw new AppError('Required fields missing', 400);
   }
 
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    throw new AppError('Invalid start or end time format', 400);
+  }
+
+  if (end <= start) {
+    throw new AppError('Drop-off time must be after pick-up time', 400);
+  }
+
+  const now = new Date();
+  if (start < new Date(now.getTime() - 15 * 60000)) { // 15 min buffer
+    throw new AppError('Pick-up time cannot be in the past', 400);
+  }
+
   const bike = await Bike.findById(bikeId);
   if (!bike) throw new AppError('Bike not found', 404);
+
+  // Check if all documents are verified
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', 404);
+
+  const hasDocuments = user.documents && user.documents.length > 0;
+  if (!hasDocuments) {
+    throw new AppError('Please upload and verify all required documents before booking a ride.', 400);
+  }
+
+  const allApproved = user.documents.every(doc => doc.status === 'approved');
+  if (!allApproved) {
+    const pendingCount = user.documents.filter(doc => doc.status !== 'approved').length;
+    throw new AppError(`You have ${pendingCount} document(s) pending verification. Please wait for admin approval before booking.`, 400);
+  }
 
   const newRental = new Rental({ 
     bikeId,
@@ -192,6 +227,21 @@ router.post('/:id/images', catchAsync(async (req, res) => {
 
   if (!rental) throw new AppError('Rental not found', 404);
   res.json(transformRental(rental));
+}));
+
+// Delete rental
+router.delete('/:id', authenticateToken, authorize('admin', 'superadmin'), catchAsync(async (req, res) => {
+  const rental = await Rental.findById(req.params.id);
+  if (!rental) throw new AppError('Rental not found', 404);
+
+  // If the rental is active/ongoing, maybe we should make the bike available again?
+  // Usually, deletion is for cancelled or completed records, but let's be safe.
+  if (['confirmed', 'ongoing', 'active'].includes(rental.status)) {
+    await Bike.findByIdAndUpdate(rental.bikeId, { available: true, status: 'available' });
+  }
+
+  await Rental.findByIdAndDelete(req.params.id);
+  res.status(204).send();
 }));
 
 export default router;   

@@ -160,7 +160,7 @@ export default function Index() {
         if (selectedLocation) {
           try {
             const loc = await locationsAPI.getById(selectedLocation);
-            if (loc) setLocationName(loc.city || loc.name);
+            if (loc) setLocationName(loc.name || loc.city);
           } catch (e) {
             console.error('Failed to load location for SEO', e);
           }

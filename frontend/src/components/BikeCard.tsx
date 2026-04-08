@@ -274,13 +274,13 @@ export const BikeCard = memo(
             <Button
               className="w-full"
               variant={bike.available ? 'default' : 'secondary'}
-              disabled={!bike.available}
+              disabled={!bike.available || (pickupDateTime && dropoffDateTime && durationHours === 0)}
               onClick={() => onRent?.(bike, selectedPricingType)}
             >
               {!isLoggedIn
                 ? 'Login to Book'
-                : !docStatus?.allApproved
-                  ? 'Documents not verified'
+                : pickupDateTime && dropoffDateTime && durationHours === 0
+                  ? 'Invalid time range'
                   : bike.available
                     ? 'Rent Now'
                     : 'Not Available'}
@@ -431,13 +431,13 @@ export const BikeCard = memo(
             <Button
               className={priceInfo || (durationHours && durationHours > 0) ? 'flex-1' : 'w-full'}
               variant={bike.available ? 'default' : 'secondary'}
-              disabled={!bike.available}
+              disabled={!bike.available || (pickupDateTime && dropoffDateTime && durationHours === 0)}
               onClick={() => onRent?.(bike, selectedPricingType)}
             >
               {!isLoggedIn
                 ? 'Login to Book'
-                : !docStatus?.allApproved
-                  ? 'Documents not verified'
+                : pickupDateTime && dropoffDateTime && durationHours === 0
+                  ? 'Invalid range'
                   : bike.available
                     ? 'Rent Now'
                     : 'Not Available'}
