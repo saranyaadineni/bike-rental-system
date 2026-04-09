@@ -120,6 +120,39 @@ const STATE_CITY_DATA: Record<string, string[]> = {
 
 const LAST_ADMIN_CITY_STORAGE_KEY = 'superadmin.lastAdminCity';
 
+const ALLOWED_STATES = [
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chhattisgarh',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+  'Delhi',
+  'Puducherry',
+] as const;
+
 // Helper function to format location name for display
 const formatLocationDisplay = (loc: any): string => {
   if (!loc) return '';
@@ -161,6 +194,7 @@ export default function SuperAdmin() {
   });
   const [newAdminCity, setNewAdminCity] = useState<string>('');
   const [newAdminOtherCity, setNewAdminOtherCity] = useState<string>('');
+  const [newAdminOtherState, setNewAdminOtherState] = useState<string>('');
   const [editAdminOpen, setEditAdminOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<any | null>(null);
   const [editAdminForm, setEditAdminForm] = useState({
@@ -171,6 +205,7 @@ export default function SuperAdmin() {
     locationId: '',
   });
   const [editAdminOtherCity, setEditAdminOtherCity] = useState<string>('');
+  const [editAdminOtherState, setEditAdminOtherState] = useState<string>('');
   const [bikeDialogOpen, setBikeDialogOpen] = useState(false);
   const [editingBike, setEditingBike] = useState<any | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -367,6 +402,7 @@ export default function SuperAdmin() {
     const goaCity = goaLoc?.city || (goaLoc?.name ? 'Goa' : '') || 'Goa';
     setNewAdminCity((prev) => prev || matchedSavedCity || goaCity);
     setNewAdminOtherCity('');
+    setNewAdminOtherState('');
   }, [createAdminOpen, locations]);
 
   useEffect(() => {
@@ -1389,6 +1425,7 @@ export default function SuperAdmin() {
                     onValueChange={(v) => {
                       setNewAdminCity(v);
                       setNewAdminOtherCity('');
+                      setNewAdminOtherState('');
                       setNewAdminForm((prev) => ({ ...prev, locationId: '' }));
                     }}
                   >
@@ -1409,11 +1446,25 @@ export default function SuperAdmin() {
                     </SelectContent>
                   </Select>
                   {newAdminCity === '__other__' ? (
-                    <Input
-                      placeholder="New City"
-                      value={newAdminOtherCity}
-                      onChange={(e) => setNewAdminOtherCity(e.target.value)}
-                    />
+                    <>
+                      <Input
+                        placeholder="New City"
+                        value={newAdminOtherCity}
+                        onChange={(e) => setNewAdminOtherCity(e.target.value)}
+                      />
+                      <Select value={newAdminOtherState} onValueChange={setNewAdminOtherState}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ALLOWED_STATES.map((st) => (
+                            <SelectItem key={st} value={st}>
+                              {st}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
                   ) : (
                     <Select
                       value={newAdminForm.locationId}
@@ -1507,6 +1558,8 @@ export default function SuperAdmin() {
                           let locationId = newAdminForm.locationId;
                           if (newAdminCity === '__other__') {
                             const city = newAdminOtherCity.trim();
+                            const state = newAdminOtherState.trim();
+                            if (!state) throw new Error('State is required');
                             const existingCityLocation = locations.find(
                               (l) => String(l.city || '').toLowerCase() === city.toLowerCase()
                             );
@@ -1517,7 +1570,7 @@ export default function SuperAdmin() {
                               const createdLocation = await locationsAPI.create({
                                 name: locationName,
                                 city,
-                                state: city,
+                                state,
                                 country: 'India',
                               });
                               locationId = createdLocation?.id;
@@ -1539,6 +1592,7 @@ export default function SuperAdmin() {
                           setCreateAdminOpen(false);
                           setNewAdminCity('');
                           setNewAdminOtherCity('');
+                          setNewAdminOtherState('');
                           loadData();
                         } catch (e: any) {
                           toast({
@@ -1573,6 +1627,8 @@ export default function SuperAdmin() {
                     confirmPassword: '',
                     locationId: '',
                   });
+                  setEditAdminOtherCity('');
+                  setEditAdminOtherState('');
                 }
               }}
             >
@@ -1622,6 +1678,7 @@ export default function SuperAdmin() {
                       setEditAdminForm({ ...editAdminForm, locationId: v });
                       if (v !== '__other__') {
                         setEditAdminOtherCity('');
+                        setEditAdminOtherState('');
                       }
                     }}
                   >
@@ -1638,11 +1695,25 @@ export default function SuperAdmin() {
                     </SelectContent>
                   </Select>
                   {editAdminForm.locationId === '__other__' && (
-                    <Input
-                      placeholder="New City / Location"
-                      value={editAdminOtherCity}
-                      onChange={(e) => setEditAdminOtherCity(e.target.value)}
-                    />
+                    <>
+                      <Input
+                        placeholder="New City / Location"
+                        value={editAdminOtherCity}
+                        onChange={(e) => setEditAdminOtherCity(e.target.value)}
+                      />
+                      <Select value={editAdminOtherState} onValueChange={setEditAdminOtherState}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ALLOWED_STATES.map((st) => (
+                            <SelectItem key={st} value={st}>
+                              {st}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
                   )}
                   <div className="flex gap-2">
                     <Button
@@ -1695,6 +1766,15 @@ export default function SuperAdmin() {
                               });
                               return;
                             }
+                            const stateRaw = editAdminOtherState.trim();
+                            if (!stateRaw) {
+                              toast({
+                                title: 'Error',
+                                description: 'State is required',
+                                variant: 'destructive',
+                              });
+                              return;
+                            }
                             const cityLower = cityRaw.toLowerCase();
                             const existingLocation =
                               locations.find(
@@ -1710,7 +1790,7 @@ export default function SuperAdmin() {
                               const createdLocation = await locationsAPI.create({
                                 name: cityRaw,
                                 city: cityRaw,
-                                state: cityRaw,
+                                state: stateRaw,
                                 country: 'India',
                               });
                               locationId = createdLocation?.id;
@@ -1781,6 +1861,7 @@ export default function SuperAdmin() {
                             locationId: '',
                           });
                           setEditAdminOtherCity('');
+                          setEditAdminOtherState('');
                           loadData();
                         } catch (e: any) {
                           toast({
@@ -1806,6 +1887,8 @@ export default function SuperAdmin() {
                           confirmPassword: '',
                           locationId: '',
                         });
+                        setEditAdminOtherCity('');
+                        setEditAdminOtherState('');
                       }}
                     >
                       Cancel
