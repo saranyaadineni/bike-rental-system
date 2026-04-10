@@ -7,6 +7,7 @@ import { transformBike } from '../utils/transform.js';
 import Rental from '../models/Rental.js';
 import { logErrorIfNotConnection } from '../utils/errorHandler.js';
 import { catchAsync } from '../utils/catchAsync.js';
+import { deleteFromS3 } from '../utils/s3.js';
 
 const router = express.Router();
 
@@ -276,11 +277,29 @@ router.put('/:id', authenticateToken, authorize(['admin', 'superadmin']), catchA
 
 // Delete bike (admin only)
 router.delete('/:id', authenticateToken, authorize(['admin', 'superadmin']), catchAsync(async (req, res) => {
-  const bike = await Bike.findByIdAndDelete(req.params.id);
+  const bike = await Bike.findById(req.params.id);
   if (!bike) {
     return res.status(404).json({ message: 'Bike not found' });
   }
-  res.json({ message: 'Bike deleted successfully' });
+
+  // 1. Delete main image from S3
+  if (bike.image && bike.image.includes('amazonaws.com')) {
+    await deleteFromS3(bike.image);
+  }
+
+  // 2. Delete additional images from S3
+  if (bike.images && bike.images.length > 0) {
+    for (const img of bike.images) {
+      if (img && img.includes('amazonaws.com')) {
+        await deleteFromS3(img);
+      }
+    }
+  }
+
+  // 3. Delete from database
+  await bike.deleteOne();
+
+  res.json({ message: 'Bike and associated S3 images deleted successfully' });
 }));
 
 export default router;

@@ -3,29 +3,28 @@ import { authenticateToken } from '../middleware/auth.js';
 import User from '../models/User.js';
 import SiteSettings from '../models/SiteSettings.js';
 import multer from 'multer';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads', 'settings');
-
-const getPublicBaseUrl = (req) => {
-  const raw = process.env.PUBLIC_BASE_URL || process.env.APP_URL || '';
-  if (raw) return String(raw).replace(/\/+$/, '');
-  return `${req.protocol}://${req.get('host')}`;
-};
-
-// Ensure uploads directory exists
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+import { uploadToS3 } from '../utils/s3.js';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// =====================================
+// ✅ MULTER CONFIG (Memory Storage)
+// =====================================
+const upload = multer({ 
+  storage: multer.memoryStorage(), 
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
+
+// =====================================
+// ✅ FILE VALIDATION
+// =====================================
+const allowedTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/jpg'
+];
 
 // Middleware to ensure superadmin access
 const requireSuperAdmin = async (req, res, next) => {
@@ -76,59 +75,38 @@ router.put('/home-hero', authenticateToken, requireSuperAdmin, async (req, res) 
 // Upload image (Super Admin only)
 router.post('/upload', authenticateToken, requireSuperAdmin, upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
+    const file = req.file;
+
+    if (!file) {
       return res.status(400).json({ message: 'No file provided' });
     }
 
-    const REGION = process.env.AWS_REGION;
-    const BUCKET = process.env.AWS_S3_BUCKET;
-    const ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
-    const SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
-
-    const ext = req.file.originalname.split('.').pop() || 'jpg';
-    const fileName = `home-hero-${Date.now()}.${ext}`;
-
-    if (REGION && BUCKET && ACCESS_KEY_ID && SECRET_ACCESS_KEY) {
-      try {
-        const s3 = new S3Client({
-          region: REGION,
-          credentials: {
-            accessKeyId: ACCESS_KEY_ID,
-            secretAccessKey: SECRET_ACCESS_KEY,
-          },
-        });
-
-        const key = `settings/${fileName}`;
-
-        const command = new PutObjectCommand({
-          Bucket: BUCKET,
-          Key: key,
-          Body: req.file.buffer,
-          ContentType: req.file.mimetype,
-        });
-
-        await s3.send(command);
-        const fileUrl = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
-        console.log('[SETTINGS UPLOAD] S3 upload successful:', fileUrl);
-        return res.json({ imageUrl: fileUrl });
-      } catch (s3Error) {
-        console.warn('[SETTINGS UPLOAD] S3 upload failed, falling back to local storage:', s3Error.message);
-      }
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ message: 'Invalid file type. Only JPG, PNG, WEBP are allowed.' });
     }
 
-    // Fallback: Local Storage
-    const localFilePath = path.join(UPLOADS_DIR, fileName);
-    fs.writeFileSync(localFilePath, req.file.buffer);
+    // ✅ Use S3 utility
+    const { fileUrl, key } = await uploadToS3(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+      req.user.userId
+    );
 
-    const baseUrl = getPublicBaseUrl(req);
-    const fileUrl = `${baseUrl}/uploads/settings/${fileName}`;
+    return res.json({ 
+      success: true,
+      imageUrl: fileUrl,
+      fileUrl: fileUrl, // For consistency
+      key: key
+    });
 
-    console.log('[SETTINGS UPLOAD] Local file path:', localFilePath);
-    console.log('[SETTINGS UPLOAD] Local upload successful:', fileUrl);
-    res.json({ imageUrl: fileUrl });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ message: 'Error uploading file' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Error uploading file',
+      details: error.message 
+    });
   }
 });
 

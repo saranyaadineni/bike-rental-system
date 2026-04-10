@@ -241,7 +241,11 @@ export default function SuperAdmin() {
       setHasError(false);
     }, [url]);
 
-    if (!url) return null;
+    if (!url) return (
+      <div className="w-24 h-24 rounded-lg border bg-muted/30 flex items-center justify-center">
+        <Bike className="h-8 w-8 text-muted-foreground/20" />
+      </div>
+    );
 
     return (
       <div
@@ -254,7 +258,7 @@ export default function SuperAdmin() {
         <img
           src={url}
           alt={label}
-          className={`w-full h-full object-contain rounded-lg border bg-muted/30 transition-all group-hover:brightness-90 ${hasError ? 'opacity-50' : ''}`}
+          className={`w-full h-full object-cover rounded-lg border bg-muted/30 transition-all group-hover:brightness-90 ${hasError ? 'opacity-50' : ''}`}
           onError={() => setHasError(true)}
         />
         {hasError && (
@@ -3034,7 +3038,7 @@ export default function SuperAdmin() {
                         try {
                           const res = await documentsAPI.uploadFile(file, file.name, 'bike_image');
                           if (res?.fileUrl) {
-                              setBikeForm({ ...bikeForm, image: res.fileUrl });
+                              setBikeForm(prev => ({ ...prev, image: res.fileUrl }));
                               setBikeFormErrors((prev) => {
                                 const { image: _, ...rest } = prev;
                                 return rest;
@@ -3046,14 +3050,14 @@ export default function SuperAdmin() {
                             } else {
                             toast({
                               title: 'Upload failed',
-                              description: 'No file URL returned',
+                              description: 'No file URL returned from API',
                               variant: 'destructive',
                             });
                           }
                         } catch (err: any) {
                           toast({
                             title: 'Upload error',
-                            description: err.message || 'Failed to upload image',
+                            description: err.message || 'Failed to upload image to S3',
                             variant: 'destructive',
                           });
                         } finally {
@@ -3129,9 +3133,11 @@ export default function SuperAdmin() {
                                   'bike_image'
                                 );
                                 if (res?.fileUrl) {
-                                  const newImages = [...bikeForm.images];
-                                  newImages[index] = res.fileUrl;
-                                  setBikeForm({ ...bikeForm, images: newImages });
+                                  setBikeForm(prev => {
+                                    const newImages = [...prev.images];
+                                    newImages[index] = res.fileUrl;
+                                    return { ...prev, images: newImages };
+                                  });
                                   toast({
                                     title: 'Image uploaded',
                                     description: `Image ${index + 1} has been uploaded`,
@@ -3140,7 +3146,7 @@ export default function SuperAdmin() {
                               } catch (err: any) {
                                 toast({
                                   title: 'Upload error',
-                                  description: err.message || 'Failed to upload image',
+                                  description: err.message || 'Failed to upload image to S3',
                                   variant: 'destructive',
                                 });
                               }

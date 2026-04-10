@@ -1,39 +1,71 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 
-export async function createPresignedUpload(userId, filename, contentType) {
-  const REGION = process.env.AWS_REGION;
-  const BUCKET = process.env.AWS_S3_BUCKET;
-  const ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
-  const SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 
-  if (!REGION || !BUCKET) {
-    throw new Error('Missing AWS_REGION or AWS_S3_BUCKET');
+/**
+ * Upload a file to S3
+ * @param {Buffer} buffer - File buffer
+ * @param {string} originalName - Original file name
+ * @param {string} mimetype - File mimetype
+ * @param {string} userId - User ID for the folder
+ * @returns {Promise<{fileUrl: string, key: string}>}
+ */
+export const uploadToS3 = async (buffer, originalName, mimetype, userId = 'guest') => {
+  const timestamp = Date.now();
+  const randomStr = crypto.randomBytes(4).toString('hex');
+  const ext = originalName.split('.').pop() || 'jpg';
+  const fileName = `${timestamp}-${randomStr}.${ext}`;
+  const key = `documents/${userId}/${fileName}`;
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: mimetype,
+    })
+  );
+
+  
+  const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  return { fileUrl, key };
+};
+
+/**
+ * Delete an object from S3
+ * @param {string} urlOrKey - Full S3 URL or the S3 key
+ */
+export const deleteFromS3 = async (urlOrKey) => {
+  if (!urlOrKey) return;
+
+  let key = urlOrKey;
+  if (urlOrKey.startsWith('http')) {
+    // Extract key from URL
+    // Format: https://bucket.s3.region.amazonaws.com/key
+    try {
+      const url = new URL(urlOrKey);
+      key = url.pathname.substring(1); // Remove leading slash
+    } catch (e) {
+      console.error('Failed to parse S3 URL:', urlOrKey);
+      return;
+    }
   }
-  if (!ACCESS_KEY_ID || !SECRET_ACCESS_KEY) {
-    throw new Error('Missing AWS credentials');
+
+  try {
+    await s3.send(
+      new DeleteObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: key,
+      })
+    );
+  } catch (error) {
+    console.error('Failed to delete from S3:', key, error.message);
   }
-
-  const s3 = new S3Client({
-    region: REGION,
-    credentials: {
-      accessKeyId: ACCESS_KEY_ID,
-      secretAccessKey: SECRET_ACCESS_KEY,
-    },
-  });
-
-  const ext = filename.split('.').pop() || 'bin';
-  const key = `documents/${userId}/${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${ext}`;
-
-  const command = new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: key,
-    ContentType: contentType,
-  });
-
-  const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
-  const fileUrl = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
-
-  return { uploadUrl, fileUrl, key };
-}
+};

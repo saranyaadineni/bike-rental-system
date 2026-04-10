@@ -1,10 +1,10 @@
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 import { authenticateToken } from '../middleware/auth.js';
 import User from '../models/User.js';
+import { uploadToS3 } from '../utils/s3.js';
 
 const router = express.Router();
 
@@ -13,18 +13,7 @@ const router = express.Router();
 // =====================================
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-});
-
-// =====================================
-// ✅ AWS S3 CLIENT
-// =====================================
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
 // =====================================
@@ -34,7 +23,7 @@ const allowedTypes = [
   'image/jpeg',
   'image/png',
   'image/webp',
-  'application/pdf',
+  'image/jpg'
 ];
 
 // =====================================
@@ -42,46 +31,37 @@ const allowedTypes = [
 // =====================================
 router.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
   try {
-    const { name, type } = req.body;
     const file = req.file;
 
-    if (!file || !name || !type) {
-      return res.status(400).json({ message: 'Missing file/name/type' });
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
     }
 
     if (!allowedTypes.includes(file.mimetype)) {
-      return res.status(400).json({ message: 'Invalid file type' });
+      return res.status(400).json({ message: 'Invalid file type. Only JPG, PNG, WEBP are allowed.' });
     }
 
-    if (!process.env.AWS_S3_BUCKET) {
-      return res.status(500).json({ message: 'S3 not configured' });
-    }
-
-    const ext = name.split('.').pop();
-    const fileName = `${req.user.userId}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
-    const key = `documents/${req.user.userId}/${fileName}`;
-
-    // ✅ Upload to S3
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      })
+    // ✅ Use S3 utility
+    const { fileUrl, key } = await uploadToS3(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+      req.user.userId
     );
-
-    const fileUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
     return res.json({
       success: true,
       fileUrl,
-      key,
+      key
     });
 
   } catch (err) {
     console.error('❌ S3 Upload Error:', err);
-    return res.status(500).json({ message: 'Upload failed' });
+    return res.status(500).json({ 
+      success: false,
+      message: 'Upload failed', 
+      error: err.message 
+    });
   }
 });
 
