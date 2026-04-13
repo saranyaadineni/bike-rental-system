@@ -71,6 +71,58 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 
+// ✅ External component for image preview to prevent re-creation on parent re-renders
+const BikeImagePreview = ({
+  url,
+  label,
+  onPreviewClick,
+}: {
+  url: string;
+  label: string;
+  onPreviewClick: (url: string) => void;
+}) => {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [url]);
+
+  if (!url) {
+    return (
+      <div className="w-24 h-24 rounded-lg border bg-muted/30 flex items-center justify-center">
+        <Bike className="h-8 w-8 text-muted-foreground/20" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative group cursor-pointer w-24 h-24 flex-shrink-0"
+      onClick={() => onPreviewClick(url)}
+    >
+      <img
+        key={url} // Force re-render when URL changes
+        src={url}
+        alt={label}
+        className={`w-full h-full object-cover rounded-lg border bg-muted/30 transition-all group-hover:brightness-90 ${hasError ? 'opacity-50' : ''}`}
+        onError={() => setHasError(true)}
+      />
+      {hasError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg">
+          <span className="text-[10px] text-destructive font-medium text-center px-1">
+            Failed to load
+          </span>
+        </div>
+      )}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="bg-black/40 text-white p-1 rounded-full backdrop-blur-sm">
+          <Maximize2 className="h-4 w-4" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface User {
   id: string;
   name: string;
@@ -644,46 +696,9 @@ export default function Admin() {
     }
   };
 
-  const BikeImagePreview = ({ url, label }: { url: string; label: string }) => {
-    const [hasError, setHasError] = useState(false);
-    useEffect(() => {
-      setHasError(false);
-    }, [url]);
-
-    if (!url) return (
-      <div className="w-24 h-24 rounded-lg border bg-muted/30 flex items-center justify-center">
-        <Bike className="h-8 w-8 text-muted-foreground/20" />
-      </div>
-    );
-
-    return (
-      <div
-        className="relative group cursor-pointer w-24 h-24 flex-shrink-0"
-        onClick={() => {
-          setPreviewImageUrl(url);
-          setIsPreviewModalOpen(true);
-        }}
-      >
-        <img
-          src={url}
-          alt={label}
-          className={`w-full h-full object-cover rounded-lg border bg-muted/30 transition-all group-hover:brightness-90 ${hasError ? 'opacity-50' : ''}`}
-          onError={() => setHasError(true)}
-        />
-        {hasError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-lg">
-            <span className="text-[10px] text-destructive font-medium text-center px-1">
-              Failed to load
-            </span>
-          </div>
-        )}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="bg-black/40 text-white p-1 rounded-full backdrop-blur-sm">
-            <Maximize2 className="h-4 w-4" />
-          </div>
-        </div>
-      </div>
-    );
+  const onPreviewClick = (url: string) => {
+    setPreviewImageUrl(url);
+    setIsPreviewModalOpen(true);
   };
 
   const handleLogout = () => {
@@ -2551,12 +2566,16 @@ export default function Admin() {
             <div className="space-y-3 border-t pt-4">
               <Label className="text-sm font-medium">Main Vehicle Image</Label>
               <div className="flex gap-4 items-start">
-                <BikeImagePreview url={bikeForm.image} label="Main vehicle preview" />
+                <BikeImagePreview 
+                  url={bikeForm.image} 
+                  label="Main vehicle preview" 
+                  onPreviewClick={onPreviewClick}
+                />
                 <div className="flex-1 space-y-2">
                   <Input
                     placeholder="Enter Image URL"
                     value={bikeForm.image}
-                    onChange={(e) => setBikeForm({ ...bikeForm, image: e.target.value })}
+                    onChange={(e) => setBikeForm(prev => ({ ...prev, image: e.target.value }))}
                   />
                   <div className="relative">
                     <Input
@@ -2648,9 +2667,11 @@ export default function Admin() {
                           size="sm"
                           className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
                           onClick={() => {
-                            const newImages = [...bikeForm.images];
-                            newImages[index] = '';
-                            setBikeForm({ ...bikeForm, images: newImages });
+                            setBikeForm(prev => {
+                              const newImages = [...prev.images];
+                              newImages[index] = '';
+                              return { ...prev, images: newImages };
+                            });
                           }}
                         >
                           <X className="h-3 w-3" />
@@ -2658,15 +2679,21 @@ export default function Admin() {
                       )}
                     </div>
                     <div className="flex gap-4 items-start">
-                      <BikeImagePreview url={img} label={`Additional preview ${index + 1}`} />
+                      <BikeImagePreview 
+                        url={img} 
+                        label={`Additional preview ${index + 1}`} 
+                        onPreviewClick={onPreviewClick}
+                      />
                       <div className="flex-1 space-y-2">
                         <Input
                           placeholder={`Image URL ${index + 1}`}
                           value={img}
                           onChange={(e) => {
-                            const newImages = [...bikeForm.images];
-                            newImages[index] = e.target.value;
-                            setBikeForm({ ...bikeForm, images: newImages });
+                            setBikeForm(prev => {
+                              const newImages = [...prev.images];
+                              newImages[index] = e.target.value;
+                              return { ...prev, images: newImages };
+                            });
                           }}
                         />
                         <div className="relative">
@@ -2675,33 +2702,36 @@ export default function Admin() {
                             accept="image/*"
                             className="cursor-pointer h-9 text-xs"
                             onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              try {
-                                const res = await documentsAPI.uploadFile(
-                                  file,
-                                  file.name,
-                                  'bike_image'
-                                );
-                                if (res?.fileUrl) {
-                                  setBikeForm(prev => {
-                                    const newImages = [...prev.images];
-                                    newImages[index] = res.fileUrl;
-                                    return { ...prev, images: newImages };
-                                  });
-                                  toast({
-                                    title: 'Image uploaded',
-                                    description: `Image ${index + 1} has been uploaded`,
-                                  });
-                                }
-                              } catch (err: any) {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setIsUploading(true);
+                            try {
+                              const res = await documentsAPI.uploadFile(
+                                file,
+                                file.name,
+                                'bike_image'
+                              );
+                              if (res?.fileUrl) {
+                                setBikeForm(prev => {
+                                  const newImages = [...prev.images];
+                                  newImages[index] = res.fileUrl;
+                                  return { ...prev, images: newImages };
+                                });
                                 toast({
-                                  title: 'Upload error',
-                                  description: err.message || 'Failed to upload image to S3',
-                                  variant: 'destructive',
+                                  title: 'Image uploaded',
+                                  description: `Image ${index + 1} has been uploaded`,
                                 });
                               }
-                            }}
+                            } catch (err: any) {
+                              toast({
+                                title: 'Upload error',
+                                description: err.message || 'Failed to upload image to S3',
+                                variant: 'destructive',
+                              });
+                            } finally {
+                              setIsUploading(false);
+                            }
+                          }}
                           />
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                             <Download className="h-3.5 w-3.5" />
