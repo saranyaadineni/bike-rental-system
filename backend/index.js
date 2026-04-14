@@ -89,6 +89,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "https://bikes-ay5i.vercel.app",
+  "https://bikes-green.vercel.app",
   process.env.PUBLIC_BASE_URL
 ].filter(Boolean);
 
