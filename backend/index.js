@@ -90,6 +90,7 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "https://bikes-ay5i.vercel.app",
   "https://bikes-green.vercel.app",
+  "https://bike.speshway.site",
   process.env.PUBLIC_BASE_URL
 ].filter(Boolean);
 
