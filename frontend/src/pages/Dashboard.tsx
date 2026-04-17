@@ -310,19 +310,21 @@ export default function Dashboard() {
     }
 
     if (!user.emailVerified || formData.email !== user.email) {
+      handleSendEmailOTP();
       toast({
-        title: 'Email Not Verified',
-        description: 'Please verify your email address using OTP.',
-        variant: 'destructive',
+        title: 'Verification Required',
+        description: 'Please verify your email address using the OTP sent to your mail.',
+        variant: 'default',
       });
       return;
     }
 
     if (!user.mobileVerified || formData.mobile !== user.mobile) {
+      handleSendMobileOTP();
       toast({
-        title: 'Mobile Not Verified',
-        description: 'Please verify your mobile number using OTP.',
-        variant: 'destructive',
+        title: 'Verification Required',
+        description: 'Please verify your mobile number using the OTP sent to your mobile.',
+        variant: 'default',
       });
       return;
     }

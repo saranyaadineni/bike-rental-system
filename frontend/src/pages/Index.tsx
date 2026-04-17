@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/Navbar';
@@ -116,13 +116,16 @@ HowItWorksSection.displayName = 'HowItWorksSection';
 
 export default function Index() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [bikes, setBikes] = useState<Bike[]>([]);
   const [homeHeroImageUrl, setHomeHeroImageUrl] = useState<string | null>(null);
   const [heroImages, setHeroImages] = useState<any[]>([]);
   const [locationName, setLocationName] = useState<string>('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const user = getCurrentUser();
+    setIsLoggedIn(!!user);
     if (user?.role === 'superadmin') {
       navigate('/superadmin');
       return;
@@ -180,7 +183,7 @@ export default function Index() {
     return () => {
       window.removeEventListener('rideflow:locationChanged', onLocationChanged);
     };
-  }, [navigate]);
+  }, [navigate, location]);
 
   const loadSettings = async () => {
     try {
@@ -406,6 +409,7 @@ export default function Index() {
                 >
                   <BikeCard
                     bike={bike}
+                    isLoggedIn={isLoggedIn}
                     onRent={(b) =>
                       navigate(`/ride-finder?rent=1&bikeId=${encodeURIComponent(b.id)}`)
                     }

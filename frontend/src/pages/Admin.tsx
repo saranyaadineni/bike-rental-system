@@ -1355,14 +1355,14 @@ export default function Admin() {
                         <td className="px-6 py-4 capitalize">{bike.type}</td>
                         <td className="px-6 py-4">
                           ₹
-                          {bike.weekdayRate ||
+                          {Math.round(Number(bike.weekdayRate ||
                             bike.pricePerHour ||
-                            Math.round((bike.price12Hours || 0) / 12)}
+                            (bike.price12Hours || 0) / 12) * 100) / 100}
                         </td>
                         <td className="px-6 py-4">
                           {bike.kmLimitPerHour
-                            ? `${bike.kmLimitPerHour} km/hr`
-                            : `${bike.kmLimit} km`}
+                            ? `${Math.round(Number(bike.kmLimitPerHour) * 100) / 100} km/hr`
+                            : `${Math.round(Number(bike.kmLimit) * 100) / 100} km`}
                         </td>
                         <td className="px-6 py-4">
                           <Badge
@@ -1633,9 +1633,9 @@ export default function Admin() {
                         <div className="mt-auto flex items-center justify-between pt-2 gap-2">
                           <p className="text-sm font-semibold text-foreground whitespace-nowrap">
                             ₹
-                            {bike.weekdayRate ||
+                            {Math.round(Number(bike.weekdayRate ||
                               bike.pricePerHour ||
-                              Math.round((bike.price12Hours || 0) / 12)}
+                              (bike.price12Hours || 0) / 12) * 100) / 100}
                             /hr
                           </p>
                           <div className="flex gap-1 flex-shrink-0">
@@ -1651,10 +1651,10 @@ export default function Admin() {
                                   year: bike.year ? String(bike.year) : '',
                                   type: bike.type,
                                   category: bike.category || 'midrange',
-                                  pricePerHour: String(bike.pricePerHour || ''),
-                                  price12Hours: String(bike.price12Hours || ''),
-                                  pricePerWeek: String(bike.pricePerWeek || ''),
-                                  kmLimit: String(bike.kmLimit),
+                                  pricePerHour: bike.pricePerHour ? String(Math.round(Number(bike.pricePerHour) * 100) / 100) : '',
+                                  price12Hours: bike.price12Hours ? String(Math.round(Number(bike.price12Hours) * 100) / 100) : '',
+                                  pricePerWeek: bike.pricePerWeek ? String(Math.round(Number(bike.pricePerWeek) * 100) / 100) : '',
+                                  kmLimit: bike.kmLimit ? String(Math.round(Number(bike.kmLimit) * 100) / 100) : '',
                                   locationId:
                                     currentUser?.role === 'superadmin'
                                       ? bike.locationId
@@ -1664,14 +1664,14 @@ export default function Admin() {
                                     bike.images && bike.images.length > 0
                                       ? [...bike.images, '', '', ''].slice(0, 3)
                                       : ['', '', ''],
-                                  weekdayRate: String(bike.weekdayRate || ''),
-                                  weekendRate: String(bike.weekendRate || ''),
-                                  excessKmCharge: String(bike.excessKmCharge || ''),
-                                  kmLimitPerHour: String(bike.kmLimitPerHour || ''),
-                                  minBookingHours: String(bike.minBookingHours || ''),
+                                  weekdayRate: bike.weekdayRate ? String(Math.round(Number(bike.weekdayRate) * 100) / 100) : '',
+                                  weekendRate: bike.weekendRate ? String(Math.round(Number(bike.weekendRate) * 100) / 100) : '',
+                                  excessKmCharge: bike.excessKmCharge ? String(Math.round(Number(bike.excessKmCharge) * 100) / 100) : '',
+                                  kmLimitPerHour: bike.kmLimitPerHour ? String(Math.round(Number(bike.kmLimitPerHour) * 100) / 100) : '',
+                                  minBookingHours: bike.minBookingHours ? String(Math.round(Number(bike.minBookingHours) * 100) / 100) : '',
                                   gstPercentage:
                                     bike.gstPercentage !== undefined && bike.gstPercentage !== null
-                                      ? String(bike.gstPercentage)
+                                      ? String(Math.round(Number(bike.gstPercentage) * 100) / 100)
                                       : '18',
                                 });
                                 setBikeDialogOpen(true);
