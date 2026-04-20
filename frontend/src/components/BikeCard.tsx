@@ -271,6 +271,12 @@ export const BikeCard = memo(
                 <span className="font-semibold">{displayKmLimit}</span>
                 <span className="text-muted-foreground">km</span>
               </div>
+              {bike.minBookingHours && Number(bike.minBookingHours) > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span>Min: {bike.minBookingHours} hrs</span>
+                </div>
+              )}
             </div>
             {bike.location?.name && (
               <div className="text-xs text-muted-foreground">
@@ -391,14 +397,19 @@ export const BikeCard = memo(
                 <span className="text-muted-foreground">km</span>
               </div>
             </div>
-            {currentSlab?.minimum_booking_rule !== 'none' && currentSlab?.minimum_value && (
+            {currentSlab?.minimum_booking_rule !== 'none' && currentSlab?.minimum_value ? (
               <div className="text-xs text-muted-foreground">
                 Min:{' '}
                 {currentSlab.minimum_booking_rule === 'min_duration'
                   ? `${currentSlab.minimum_value} hrs`
                   : `₹${currentSlab.minimum_value}`}
               </div>
-            )}
+            ) : bike.minBookingHours && Number(bike.minBookingHours) > 0 ? (
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Min: {bike.minBookingHours} hrs
+              </div>
+            ) : null}
           </div>
 
           {pickupDateTime && dropoffDateTime && (

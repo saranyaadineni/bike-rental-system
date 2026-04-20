@@ -70,6 +70,12 @@ const statusStyles = {
   unverified: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
   approved: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
   rejected: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
+  // Rental statuses
+  confirmed: { color: 'bg-blue-500/10 text-blue-500', icon: Clock },
+  ongoing: { color: 'bg-accent/10 text-accent', icon: Bike },
+  active: { color: 'bg-accent/10 text-accent', icon: Bike },
+  completed: { color: 'bg-green-500/10 text-green-500', icon: CheckCircle },
+  cancelled: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
 };
 
 import { PREDEFINED_BIKE_SPECS, getBrandForModel, validateBrandModelMatch } from '@/lib/bikeSpecs';
@@ -458,6 +464,8 @@ export default function SuperAdmin() {
       return;
     }
     setCurrentUser(user);
+    console.log('[SuperAdmin] Current User:', user);
+    console.log('[SuperAdmin] Initial selectedLocationFilter:', selectedLocationFilter);
     loadData();
   }, []);
 
@@ -2086,13 +2094,14 @@ export default function SuperAdmin() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap border-b border-border">
                                   <div className="flex gap-2">
-                                    {r.status === 'active' && (
+                                    {(r.status === 'active' || r.status === 'ongoing') && (
                                       <Button
                                         size="sm"
                                         onClick={async () => {
+                                          if (!confirm('Are you sure you want to end this ride?')) return;
                                           try {
                                             await rentalsAPI.end(r.id);
-                                            toast({ title: 'Ride Closed' });
+                                            toast({ title: 'Ride Ended' });
                                             loadData();
                                           } catch (e: any) {
                                             toast({
@@ -2103,14 +2112,15 @@ export default function SuperAdmin() {
                                           }
                                         }}
                                       >
-                                        Force Close
+                                        End Ride
                                       </Button>
                                     )}
-                                    {r.status !== 'completed' && r.status !== 'cancelled' && (
+                                    {r.status === 'confirmed' && (
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         onClick={async () => {
+                                          if (!confirm('Are you sure you want to cancel this booking?')) return;
                                           try {
                                             await rentalsAPI.cancel(r.id);
                                             toast({ title: 'Booking Cancelled' });
@@ -2126,6 +2136,11 @@ export default function SuperAdmin() {
                                       >
                                         Cancel
                                       </Button>
+                                    )}
+                                    {(r.status === 'completed' || r.status === 'cancelled') && (
+                                      <span className="text-xs text-muted-foreground italic px-2">
+                                        {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                                      </span>
                                     )}
                                   </div>
                                 </td>

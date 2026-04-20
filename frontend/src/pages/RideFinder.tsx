@@ -137,30 +137,6 @@ export default function RideFinder() {
     }
   };
 
-  const filteredBikes = useMemo(() => {
-    return bikes.filter((bike) => {
-      const matchesSearch = bike.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = selectedType === 'all' || bike.type === selectedType;
-      return matchesSearch && matchesType;
-    });
-  }, [bikes, searchQuery, selectedType]);
-
-  const getSortPrice = (bike: Bike) => {
-    if (bike.weekdayRate) return bike.weekdayRate;
-    if (bike.price12Hours) return bike.price12Hours / 12;
-    return bike.pricePerHour || 0;
-  };
-
-  const bikesToShow = useMemo(() => {
-    return sortBy === 'relevance'
-      ? filteredBikes
-      : [...filteredBikes].sort((a, b) =>
-          sortBy === 'priceLow'
-            ? getSortPrice(a) - getSortPrice(b)
-            : getSortPrice(b) - getSortPrice(a)
-        );
-  }, [filteredBikes, sortBy]);
-
   const getDateTime = (dateStr: string, timeStr: string) => {
     if (!dateStr || !timeStr) return null;
     return new Date(`${dateStr}T${timeStr}`);
@@ -213,6 +189,40 @@ export default function RideFinder() {
   }, [validationResult]);
 
   const durationHours = useMemo(() => validationResult.isValid ? validationResult.durationHours : 0, [validationResult]);
+
+  const filteredBikes = useMemo(() => {
+    return bikes.filter((bike) => {
+      const matchesSearch = bike.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = selectedType === 'all' || bike.type === selectedType;
+      
+      // Filter by minimum booking hours if duration is known
+      let matchesDuration = true;
+      if (validationResult.isValid && durationHours > 0) {
+        const minHours = Number(bike.minBookingHours || 0);
+        if (minHours > 0 && durationHours < minHours) {
+          matchesDuration = false;
+        }
+      }
+
+      return matchesSearch && matchesType && matchesDuration;
+    });
+  }, [bikes, searchQuery, selectedType, validationResult.isValid, durationHours]);
+
+  const getSortPrice = (bike: Bike) => {
+    if (bike.weekdayRate) return bike.weekdayRate;
+    if (bike.price12Hours) return bike.price12Hours / 12;
+    return bike.pricePerHour || 0;
+  };
+
+  const bikesToShow = useMemo(() => {
+    return sortBy === 'relevance'
+      ? filteredBikes
+      : [...filteredBikes].sort((a, b) =>
+          sortBy === 'priceLow'
+            ? getSortPrice(a) - getSortPrice(b)
+            : getSortPrice(b) - getSortPrice(a)
+        );
+  }, [filteredBikes, sortBy]);
 
   // Clear bike results if invalid time is selected
   useEffect(() => {
@@ -485,6 +495,34 @@ export default function RideFinder() {
     const end = dropoffDT || new Date(`${dropoffDate}T${dropoffTime}`);
     const hours = durationHours;
 
+    // Validate minimum booking hours
+    const minHours = Number(selectedBike.minBookingHours || 0);
+    const durationMs = end.getTime() - start.getTime();
+    const durationHoursCalculated = durationMs / (1000 * 60 * 60);
+
+    if (minHours > 0 && durationHoursCalculated < minHours) {
+      toast({
+        title: 'Minimum Duration Required',
+        description: `This vehicle requires a minimum booking of ${minHours} hours.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate pickup lead time (e.g., at least 30 minutes from now)
+    const nowTime = new Date();
+    const leadTimeMs = start.getTime() - nowTime.getTime();
+    const leadTimeMins = leadTimeMs / (1000 * 60);
+
+    if (leadTimeMins < 15) { // 15 minute lead time
+      toast({
+        title: 'Invalid Pickup Time',
+        description: 'Pickup time must be at least 15 minutes from now.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     let finalCalculatedAmount: number;
     try {
       // Try new simple pricing model first
@@ -748,15 +786,17 @@ export default function RideFinder() {
                     >
                       Apply filter
                     </Button>
-                    <div
-                      className={`text-xs whitespace-nowrap ${!validationResult.isValid && areAllTimeFieldsFilled ? 'text-destructive' : 'text-muted-foreground'}`}
-                    >
-                      {!validationResult.isValid && areAllTimeFieldsFilled
-                        ? 'Invalid Range'
-                        : durationMinutes
-                          ? `${durationMinutes} Minutes`
-                          : '0 Minutes'}
-                    </div>
+                      <div
+                        className={`text-xs whitespace-nowrap ${!validationResult.isValid && areAllTimeFieldsFilled ? 'text-destructive' : 'text-muted-foreground'}`}
+                      >
+                        {!validationResult.isValid && areAllTimeFieldsFilled
+                          ? 'Invalid Range'
+                          : durationMinutes > 0
+                            ? durationMinutes >= 60
+                              ? `${(durationMinutes / 60).toFixed(1)} Hours`
+                              : `${durationMinutes} Minutes`
+                            : '0 Minutes'}
+                      </div>
                   </div>
                 </div>
               </div>
@@ -878,8 +918,10 @@ export default function RideFinder() {
               >
                 {!validationResult.isValid && areAllTimeFieldsFilled
                   ? 'Invalid Range'
-                  : durationMinutes
-                    ? `${durationMinutes} Minutes`
+                  : durationMinutes > 0
+                    ? durationMinutes >= 60
+                      ? `${(durationMinutes / 60).toFixed(1)} Hours`
+                      : `${durationMinutes} Minutes`
                     : '0 Minutes'}
               </div>
             </div>

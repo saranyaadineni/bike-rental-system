@@ -72,12 +72,21 @@ router.post('/', catchAsync(async (req, res) => {
   }
 
   const now = new Date();
-  if (start < new Date(now.getTime() - 15 * 60000)) { // 15 min buffer
+  if (start < new Date(now.getTime() - 5 * 60000)) { // Allow 5 min buffer for latency
     throw new AppError('Pick-up time cannot be in the past', 400);
   }
 
   const bike = await Bike.findById(bikeId);
   if (!bike) throw new AppError('Bike not found', 404);
+
+  // Validate minimum booking hours
+  const minHours = Number(bike.minBookingHours || 0);
+  const durationMs = end.getTime() - start.getTime();
+  const durationHours = durationMs / (1000 * 60 * 60);
+
+  if (minHours > 0 && durationHours < minHours) {
+    throw new AppError(`This vehicle requires a minimum booking of ${minHours} hours.`, 400);
+  }
 
   // Check if all documents are verified
   const user = await User.findById(userId);

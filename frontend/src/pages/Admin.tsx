@@ -183,6 +183,12 @@ const statusStyles = {
   unverified: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
   approved: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
   rejected: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
+  // Rental statuses
+  confirmed: { color: 'bg-blue-500/10 text-blue-500', icon: Clock },
+  ongoing: { color: 'bg-accent/10 text-accent', icon: Bike },
+  active: { color: 'bg-accent/10 text-accent', icon: Bike },
+  completed: { color: 'bg-green-500/10 text-green-500', icon: CheckCircle },
+  cancelled: { color: 'bg-destructive/10 text-destructive', icon: XCircle },
 };
 
 const adminTabIds = [
@@ -406,6 +412,8 @@ export default function Admin() {
       return;
     }
     setCurrentUser(user);
+    console.log('[Admin] Current User:', user);
+    console.log('[Admin] Initial selectedLocationId:', selectedLocationId);
     loadData();
   }, []);
 
@@ -1969,14 +1977,9 @@ export default function Admin() {
                                       </Button>
                                     )}
                                     {(r.status === 'completed' || r.status === 'cancelled') && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        disabled
-                                        className="text-muted-foreground"
-                                      >
-                                        No actions available
-                                      </Button>
+                                      <span className="text-xs text-muted-foreground italic px-2">
+                                        {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                                      </span>
                                     )}
                                     <Button
                                       variant="ghost"
