@@ -16,6 +16,7 @@ export interface Bike {
   brand?: string;
   year?: number;
   image: string;
+  mainImage?: string; // S3 URL field
   images?: string[];
   // Legacy fields for backward compatibility
   pricePerHour?: number;

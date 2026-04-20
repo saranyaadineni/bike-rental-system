@@ -10,6 +10,7 @@ export function transformBike(bike) {
     brand: bikeObj.brand,
     year: bikeObj.year || null,
     image: bikeObj.image,
+    mainImage: bikeObj.image, // Add mainImage as an alias for frontend compatibility
     images: bikeObj.images || [],
     pricePerHour: bikeObj.pricePerHour,
     price12Hours: bikeObj.price12Hours || null,

@@ -1168,28 +1168,36 @@ export default function SuperAdmin() {
                     return matchesSearch && matchesBrand;
                   })
                   .map((bike) => {
+                    // Log vehicle object for debugging
+                    console.log(`[SuperAdmin] Vehicle ${bike.id} (${bike.name}):`, {
+                      image: bike.image,
+                      mainImage: bike.mainImage,
+                      images: bike.images
+                    });
+
                     const isInvalidPath = (url: string | undefined | null) => {
                       if (!url || typeof url !== 'string' || url.trim() === '') return true;
+                      
+                      // For S3 URLs, always consider them valid if they start with http
                       const lowerUrl = url.toLowerCase();
+                      if (lowerUrl.startsWith('http')) return false;
+
+                      // For relative paths, filter out specific folders if needed
                       return (
-                        lowerUrl.includes('documents/') ||
                         lowerUrl.includes('placeholder.png') ||
-                        lowerUrl.includes('uploads/') ||
-                        (!lowerUrl.startsWith('http') &&
-                          !lowerUrl.startsWith('https') &&
-                          !lowerUrl.startsWith('data:'))
+                        (!lowerUrl.startsWith('data:'))
                       );
                     };
 
                     const validImages = (bike.images || []).filter((img: string) => !isInvalidPath(img));
-                    const imageUrl = validImages?.[0] || (!isInvalidPath(bike.image) ? bike.image : null);
+                    const imageUrl = bike.mainImage || bike.image || validImages?.[0] || null;
 
                     return (
                       <div
                         key={bike.id}
                         className="border rounded-lg p-2 sm:p-3 flex flex-col bg-card h-full min-w-0"
                       >
-                        {imageUrl ? (
+                        {imageUrl && !isInvalidPath(imageUrl) ? (
                           <div className="relative mb-2 h-32 sm:h-40 md:h-48 bg-muted rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
                             <img
                               src={imageUrl}
@@ -1197,6 +1205,7 @@ export default function SuperAdmin() {
                               className="max-w-full max-h-full object-contain rounded-md"
                               style={{ imageRendering: 'auto' as const }}
                               onError={(e) => {
+                                console.error(`Failed to load image for ${bike.name}: ${imageUrl}`);
                                 (e.target as HTMLImageElement).style.display = 'none';
                               }}
                             />

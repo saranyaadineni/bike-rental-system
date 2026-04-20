@@ -1049,30 +1049,29 @@ export default function RideFinder() {
                           {(() => {
                             const isInvalidPath = (url: string | undefined | null) => {
                               if (!url || typeof url !== 'string' || url.trim() === '') return true;
+                              
+                              // For S3 URLs, always consider them valid if they start with http
                               const lowerUrl = url.toLowerCase();
+                              if (lowerUrl.startsWith('http')) return false;
+
                               return (
-                                lowerUrl.includes('documents/') ||
                                 lowerUrl.includes('placeholder.png') ||
-                                lowerUrl.includes('uploads/') ||
-                                (!lowerUrl.startsWith('http') &&
-                                  !lowerUrl.startsWith('https') &&
-                                  !lowerUrl.startsWith('data:'))
+                                (!lowerUrl.startsWith('data:'))
                               );
                             };
 
                             const validImages = (selectedBike.images || []).filter(
                               (img: string) => !isInvalidPath(img)
                             );
-                            const imageUrl =
-                              validImages?.[0] ||
-                              (!isInvalidPath(selectedBike.image) ? selectedBike.image : null);
+                            const imageUrl = selectedBike.mainImage || selectedBike.image || validImages?.[0] || null;
 
-                            return imageUrl ? (
+                            return imageUrl && !isInvalidPath(imageUrl) ? (
                               <img
                                 src={imageUrl}
                                 alt={selectedBike.name}
                                 className="w-16 h-16 object-cover rounded-md"
                                 onError={(e) => {
+                                  console.error(`Failed to load image for ${selectedBike.name}: ${imageUrl}`);
                                   (e.target as HTMLImageElement).style.display = 'none';
                                 }}
                               />

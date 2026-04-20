@@ -62,20 +62,29 @@ const BikeImageSlider = memo(
     );
 
     const images = useMemo(() => {
+      // Log vehicle object for debugging in BikeCard
+      console.log(`[BikeCard] Vehicle ${bike.id} (${bike.name}):`, {
+        image: bike.image,
+        mainImage: bike.mainImage,
+        images: bike.images
+      });
+
       // 1. Filter out invalid/empty/hardcoded local fallback paths
       const isInvalidPath = (url: string) => {
         if (!url || typeof url !== 'string' || url.trim() === '') return true;
+        
+        // For S3 URLs, always consider them valid if they start with http
         const lowerUrl = url.toLowerCase();
+        if (lowerUrl.startsWith('http')) return false;
+
         return (
-          lowerUrl.includes('documents/') ||
           lowerUrl.includes('placeholder.png') ||
-          lowerUrl.includes('uploads/') ||
-          (!lowerUrl.startsWith('http') && !lowerUrl.startsWith('https') && !lowerUrl.startsWith('data:'))
+          (!lowerUrl.startsWith('data:'))
         );
       };
 
       const validImages = (bike.images || []).filter((img) => !isInvalidPath(img));
-      const mainImage = !isInvalidPath(bike.image) ? bike.image : null;
+      const mainImage = bike.mainImage || (!isInvalidPath(bike.image) ? bike.image : null);
 
       // 2. Final logic: Prefer images from array, then main image
       const imgs = [...validImages];
@@ -84,7 +93,7 @@ const BikeImageSlider = memo(
       }
       
       return [...new Set(imgs)];
-    }, [bike.image, bike.images]);
+    }, [bike.id, bike.name, bike.image, bike.mainImage, bike.images]);
 
     if (images.length === 0) {
       return (
