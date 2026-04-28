@@ -352,6 +352,11 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
     
     // Only proceed if user exists and is a superadmin
     if (user && user.role === 'superadmin') {
+      // Check if an OTP was recently sent (within last 60 seconds) to prevent spam
+      if (user.resetPasswordOTP && user.resetPasswordOTPExpires && (user.resetPasswordOTPExpires - Date.now() > 240000)) {
+        return res.json({ message: genericMessage });
+      }
+
       // Generate 6-digit OTP
       const otp = generateOTP();
       
@@ -359,6 +364,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
       const hashedOTP = await bcrypt.hash(otp, 10);
       user.resetPasswordOTP = hashedOTP;
       user.resetPasswordOTPExpires = Date.now() + 300000; // 5 minutes expiry
+      user.resetPasswordOTPAttempts = 0; // Reset attempts
 
       await user.save();
 
@@ -366,7 +372,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
       try {
         const { sendEmail } = await import('../utils/email.js');
         await sendEmail({
-          to: email,
+          to: user.email,
           subject: 'RideFlow Super Admin Password Reset OTP',
           html: `
             <div style="font-family: sans-serif; padding: 20px; color: #333; border: 1px solid #eee; border-radius: 10px;">
@@ -406,6 +412,7 @@ router.post('/reset-password', async (req, res) => {
 
     const user = await User.findOne({
       email: email.toLowerCase(),
+      role: 'superadmin',
       resetPasswordOTPExpires: { $gt: Date.now() }
     });
 
@@ -413,9 +420,16 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Invalid OTP or OTP has expired' });
     }
 
+    // Check if max attempts exceeded (e.g., 5 attempts)
+    if (user.resetPasswordOTPAttempts >= 5) {
+      return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
+    }
+
     // Verify the hashed OTP
     const isOTPValid = await bcrypt.compare(otp, user.resetPasswordOTP);
     if (!isOTPValid) {
+      user.resetPasswordOTPAttempts = (user.resetPasswordOTPAttempts || 0) + 1;
+      await user.save();
       return res.status(400).json({ message: 'Invalid OTP or OTP has expired' });
     }
 
@@ -423,6 +437,7 @@ router.post('/reset-password', async (req, res) => {
     user.password = newPassword;
     user.resetPasswordOTP = undefined;
     user.resetPasswordOTPExpires = undefined;
+    user.resetPasswordOTPAttempts = undefined;
 
     await user.save();
 

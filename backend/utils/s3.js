@@ -40,6 +40,16 @@ export const uploadToS3 = async (buffer, originalName, mimetype, userId = 'guest
 };
 
 /**
+ * Get the absolute S3 URL for a given key.
+ * @param {string} key - The S3 object key.
+ * @returns {string} The absolute S3 URL.
+ */
+export const getS3Url = (key) => {
+  if (!key) return '';
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+};
+
+/**
  * Delete an object from S3
  * @param {string} urlOrKey - Full S3 URL or the S3 key
  */

@@ -1710,8 +1710,9 @@ export default function SuperAdmin() {
                   />
                   <Input
                     type="password"
-                    placeholder="New Password"
+                    placeholder="New Password (leave blank to keep current)"
                     value={editAdminForm.password}
+                    autoComplete="new-password"
                     onChange={(e) =>
                       setEditAdminForm({ ...editAdminForm, password: e.target.value })
                     }
@@ -1721,6 +1722,7 @@ export default function SuperAdmin() {
                       type="password"
                       placeholder="Confirm Password"
                       value={editAdminForm.confirmPassword}
+                      autoComplete="new-password"
                       onChange={(e) =>
                         setEditAdminForm({ ...editAdminForm, confirmPassword: e.target.value })
                       }
@@ -1876,8 +1878,9 @@ export default function SuperAdmin() {
                           };
 
                           // If password is provided, validate it
-                          if (editAdminForm.password && editAdminForm.password.trim()) {
-                            const passwordError = validatePassword(editAdminForm.password);
+                          const trimmedPassword = editAdminForm.password?.trim();
+                          if (trimmedPassword) {
+                            const passwordError = validatePassword(trimmedPassword);
                             if (passwordError) {
                               toast({
                                 title: 'Validation Error',
@@ -1886,7 +1889,7 @@ export default function SuperAdmin() {
                               });
                               return;
                             }
-                            if (editAdminForm.password !== editAdminForm.confirmPassword) {
+                            if (trimmedPassword !== editAdminForm.confirmPassword?.trim()) {
                               toast({
                                 title: 'Validation Error',
                                 description: 'Passwords do not match',
@@ -1894,7 +1897,7 @@ export default function SuperAdmin() {
                               });
                               return;
                             }
-                            payload.password = editAdminForm.password.trim();
+                            payload.password = trimmedPassword;
                           }
 
                           await usersAPI.update(editingAdmin.id, payload);

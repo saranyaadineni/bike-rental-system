@@ -14,6 +14,7 @@ import Autoplay from 'embla-carousel-autoplay';
 import { Gauge, Clock, Zap, Bike as BikeIcon } from 'lucide-react';
 import { getAvailablePricingSlabs, calculateRentalPrice } from '@/utils/priceCalculator';
 import { calculateSimplePrice } from '@/utils/simplePriceCalculator';
+import placeholderImage from '/placeholder.svg';
 
 interface BikeCardProps {
   bike: Bike;
@@ -69,36 +70,21 @@ const BikeImageSlider = memo(
         images: bike.images
       });
 
-      // 1. Filter out invalid/empty/hardcoded local fallback paths
-      const isInvalidPath = (url: string) => {
-        if (!url || typeof url !== 'string' || url.trim() === '') return true;
-        
-        // For S3 URLs, always consider them valid if they start with http
-        const lowerUrl = url.toLowerCase();
-        if (lowerUrl.startsWith('http')) return false;
-
-        return (
-          lowerUrl.includes('placeholder.png') ||
-          (!lowerUrl.startsWith('data:'))
-        );
+      // Filter out invalid/empty image paths
+      const isValidImageUrl = (url: string | null | undefined) => {
+        return url && typeof url === 'string' && url.trim() !== '' && (url.startsWith('http://') || url.startsWith('https://'));
       };
 
-      const validImages = (bike.images || []).filter((img) => !isInvalidPath(img));
-      const mainImage = bike.mainImage || (!isInvalidPath(bike.image) ? bike.image : null);
-
-      // 2. Final logic: Prefer images from array, then main image
-      const imgs = [...validImages];
-      if (mainImage && !imgs.includes(mainImage)) {
-        imgs.push(mainImage);
-      }
+      const allImages = [bike.mainImage, bike.image, ...(bike.images || [])];
+      const validImages = allImages.filter(isValidImageUrl);
       
-      return [...new Set(imgs)];
+      return [...new Set(validImages)];
     }, [bike.id, bike.name, bike.image, bike.mainImage, bike.images]);
 
     if (images.length === 0) {
       return (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
-          <TypeIcon className={`${iconClassName} text-muted-foreground/20`} />
+          <img src={placeholderImage} alt="Placeholder" className="h-20 w-20 object-contain text-muted-foreground/20" />
         </div>
       );
     }
@@ -111,7 +97,7 @@ const BikeImageSlider = memo(
           loading="lazy"
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
+            (e.target as HTMLImageElement).src = placeholderImage;
           }}
         />
       );
@@ -134,7 +120,7 @@ const BikeImageSlider = memo(
                 loading="lazy"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).src = placeholderImage;
                 }}
               />
             </CarouselItem>

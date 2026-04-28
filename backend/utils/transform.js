@@ -1,4 +1,14 @@
+import { getS3Url } from './s3.js';
+
 // Helper function to transform MongoDB document _id to id
+function ensureAbsoluteUrl(url) {
+  if (!url || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // Assuming relative paths like '/bikes/default.jpg' are S3 keys
+  return getS3Url(url.startsWith('/') ? url.substring(1) : url);
+}
+
 export function transformBike(bike) {
   if (!bike) return null;
   const bikeObj = bike.toObject ? bike.toObject() : bike;
@@ -9,9 +19,9 @@ export function transformBike(bike) {
     category: bikeObj.category || 'midrange',
     brand: bikeObj.brand,
     year: bikeObj.year || null,
-    image: bikeObj.image,
-    mainImage: bikeObj.image, // Add mainImage as an alias for frontend compatibility
-    images: bikeObj.images || [],
+    image: ensureAbsoluteUrl(bikeObj.image),
+    mainImage: ensureAbsoluteUrl(bikeObj.image), // Add mainImage as an alias for frontend compatibility
+    images: (bikeObj.images || []).map(ensureAbsoluteUrl),
     pricePerHour: bikeObj.pricePerHour,
     price12Hours: bikeObj.price12Hours || null,
     pricePerHour13: bikeObj.pricePerHour13 || null,

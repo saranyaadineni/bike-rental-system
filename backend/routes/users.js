@@ -192,15 +192,32 @@ router.get('/:id', authenticateToken, async (req, res) => {
         }
         const nextRole = role !== undefined ? role : user.role;
         if (nextRole === 'admin') {
-          const cityRegex = new RegExp(`^${escapeRegex(exists.city)}$`, 'i');
-          const cityLocations = await Location.find({ city: cityRegex }).select('_id');
+          const normalizedCity = String(exists.city || '').trim().toLowerCase();
+          
+          console.log('[DEBUG] Admin Update Validation:', {
+            currentAdminId: req.params.id,
+            targetCity: normalizedCity,
+            locationId: locationId
+          });
+
+          const cityLocations = await Location.find({ 
+            city: { $regex: new RegExp(`^${escapeRegex(normalizedCity)}$`, 'i') } 
+          }).select('_id');
+          
           const cityLocationIds = cityLocations.map((l) => l._id);
+          
           if (cityLocationIds.length > 0) {
             const otherAdmin = await User.findOne({
               role: 'admin',
-              _id: { $ne: user._id },
+              _id: { $ne: req.params.id },
               locationId: { $in: cityLocationIds },
             }).select('_id');
+
+            console.log('[DEBUG] Duplicate Check Result:', {
+              foundOtherAdmin: !!otherAdmin,
+              otherAdminId: otherAdmin?._id
+            });
+
             if (otherAdmin) {
               return res.status(400).json({ message: 'An admin already exists for this city' });
             }
@@ -213,26 +230,23 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 
     // Update password separately if provided (before saving other fields)
-    if (password) {
+    if (password && typeof password === 'string' && password.trim() !== '') {
+      const trimmedPassword = password.trim();
       // Validate password length
-      if (password.length < 6) {
+      if (trimmedPassword.length < 6) {
         return res.status(400).json({ message: 'Password must be at least 6 characters long' });
       }
       // Ensure superadmin or admin can update passwords
       if (!['admin', 'superadmin'].includes(currentUser.role)) {
         return res.status(403).json({ message: 'Only admin or superadmin can update passwords' });
       }
-      // Hash the password directly
-      const hashedPassword = await bcrypt.hash(password, 10);
-      // Use updateOne to directly update the password in the database
-      // This bypasses the pre-save hook and ensures the password is saved correctly
-      const updateResult = await User.updateOne({ _id: user._id }, { $set: { password: hashedPassword } });
-      if (updateResult.modifiedCount === 0) {
-        console.error('Password update failed - no documents modified');
-      }
+      
+      // Simply set the password on the user object.
+      // The pre-save hook in models/User.js will handle hashing.
+      user.password = trimmedPassword;
     }
     
-    // Save other fields
+    // Save all fields (including password if it was set above)
     await user.save();
     
     // Reload the user from database to ensure we have the latest data
@@ -320,14 +334,30 @@ router.post('/create-admin', authenticateToken, async (req, res) => {
     if (!loc) {
       return res.status(400).json({ message: 'Invalid location' });
     }
-    const cityRegex = new RegExp(`^${escapeRegex(loc.city)}$`, 'i');
-    const cityLocations = await Location.find({ city: cityRegex }).select('_id');
+
+    const normalizedCity = String(loc.city || '').trim().toLowerCase();
+    
+    console.log('[DEBUG] Admin Creation Validation:', {
+      targetCity: normalizedCity,
+      locationId: locationId
+    });
+
+    const cityLocations = await Location.find({ 
+       city: { $regex: new RegExp(`^${escapeRegex(normalizedCity)}$`, 'i') } 
+     }).select('_id');
+
     const cityLocationIds = cityLocations.map((l) => l._id);
     if (cityLocationIds.length > 0) {
       const existingCityAdmin = await User.findOne({
         role: 'admin',
         locationId: { $in: cityLocationIds },
       }).select('_id');
+
+      console.log('[DEBUG] Admin Creation Duplicate Check:', {
+        foundExistingAdmin: !!existingCityAdmin,
+        existingAdminId: existingCityAdmin?._id
+      });
+
       if (existingCityAdmin) {
         return res.status(400).json({ message: 'An admin already exists for this city' });
       }

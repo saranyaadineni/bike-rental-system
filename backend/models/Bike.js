@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { getS3Url } from '../utils/s3.js';
 
 const pricingSlabSchema = new mongoose.Schema({
   price: { type: Number, required: true },
@@ -16,7 +17,7 @@ const bikeSchema = new mongoose.Schema({
   category: { type: String, enum: ['budget', 'midrange', 'topend'], default: 'midrange' },
   brand: { type: String, default: '' },
   year: { type: Number },
-  image: { type: String, default: '/bikes/default.jpg' },
+  image: { type: String, default: getS3Url('bikes/default.jpg') },
   images: [{ type: String }],
   // Legacy fields for backward compatibility
   pricePerHour: { type: Number },

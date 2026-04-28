@@ -58,7 +58,8 @@ const userSchema = new mongoose.Schema({
   documents: [documentSchema],
   createdAt: { type: Date, default: Date.now },
   resetPasswordOTP: { type: String, default: null },
-  resetPasswordOTPExpires: { type: Date, default: null }
+  resetPasswordOTPExpires: { type: Date, default: null },
+  resetPasswordOTPAttempts: { type: Number, default: 0 }
 });
 
 // Add indexes for performance
