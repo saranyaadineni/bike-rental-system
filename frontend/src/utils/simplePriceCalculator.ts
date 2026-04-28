@@ -40,11 +40,15 @@ export function calculateSimplePrice(
   endDate: Date
 ): SimplePriceBreakdown {
   const durationMs = endDate.getTime() - startDate.getTime();
-  const durationHours = durationMs / (1000 * 60 * 60);
+  const actualDurationHours = durationMs / (1000 * 60 * 60);
 
-  if (durationHours <= 0) {
+  if (actualDurationHours <= 0) {
     throw new Error('Drop-off time must be after pick-up time');
   }
+
+  // Check minimum booking hours and use effective duration for pricing
+  const minHours = bike.minBookingHours || 0;
+  const durationHours = Math.max(actualDurationHours, minHours);
 
   // Check if we have the new pricing fields
   const hasPrice12Hours = bike.price12Hours && bike.price12Hours > 0;
@@ -65,13 +69,9 @@ export function calculateSimplePrice(
   if (hasTariff) {
     pricingType = 'tariff';
 
-    // Check minimum booking hours
-    const minHours = bike.minBookingHours || 0;
-    const effectiveDuration = Math.max(durationHours, minHours);
-
     let tariffCost = 0;
     // Iterate through each hour (or part thereof) using a more robust loop
-    let hoursLeft = effectiveDuration;
+    let hoursLeft = durationHours;
     const currentTempDate = new Date(startDate);
 
     // Safety counter to prevent infinite loops
@@ -96,13 +96,15 @@ export function calculateSimplePrice(
     }
 
     basePrice = tariffCost;
-    breakdown = `Total for ${durationHours.toFixed(1)} hrs (min ${minHours}h)`;
+    breakdown = minHours > 0 && actualDurationHours < minHours
+      ? `Total for ${minHours}h (Minimum booking applied)`
+      : `Total for ${durationHours.toFixed(1)} hrs`;
 
     // Use static kmLimit if available, otherwise calculate from kmLimitPerHour
     if (bike.kmLimit) {
       includedKm = bike.kmLimit;
     } else if (bike.kmLimitPerHour) {
-      includedKm = bike.kmLimitPerHour * effectiveDuration;
+      includedKm = bike.kmLimitPerHour * durationHours;
     }
 
     if (bike.excessKmCharge) {
@@ -114,7 +116,9 @@ export function calculateSimplePrice(
     basePrice = bike.price12Hours!;
     pricingType = '12hours';
     const hours = Math.round(durationHours);
-    breakdown = `Total for ${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
+    breakdown = minHours > 0 && actualDurationHours < minHours
+      ? `12h Package (Min ${minHours}h booking)`
+      : `Total for ${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
   }
   // 3. Fallback to 12-hour pricing for >12h (if strict simple pricing)
   else if (durationHours > 12 && durationHours <= 24 && hasPrice12Hours) {
@@ -126,7 +130,9 @@ export function calculateSimplePrice(
   else if (bike.pricePerHour) {
     basePrice = bike.pricePerHour * durationHours;
     pricingType = 'hourly';
-    breakdown = `${durationHours.toFixed(1)} hrs × ₹${bike.pricePerHour} = ₹${basePrice.toFixed(2)}`;
+    breakdown = minHours > 0 && actualDurationHours < minHours
+      ? `₹${bike.pricePerHour}/hr × ${minHours}h (Minimum applied) = ₹${basePrice.toFixed(2)}`
+      : `${durationHours.toFixed(1)} hrs × ₹${bike.pricePerHour} = ₹${basePrice.toFixed(2)}`;
   }
 
   // Calculate GST - use the bike's gstPercentage if available, otherwise default to 18%

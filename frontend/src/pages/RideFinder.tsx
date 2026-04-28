@@ -195,16 +195,7 @@ export default function RideFinder() {
       const matchesSearch = bike.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = selectedType === 'all' || bike.type === selectedType;
       
-      // Filter by minimum booking hours if duration is known
-      let matchesDuration = true;
-      if (validationResult.isValid && durationHours > 0) {
-        const minHours = Number(bike.minBookingHours || 0);
-        if (minHours > 0 && durationHours < minHours) {
-          matchesDuration = false;
-        }
-      }
-
-      return matchesSearch && matchesType && matchesDuration;
+      return matchesSearch && matchesType;
     });
   }, [bikes, searchQuery, selectedType, validationResult.isValid, durationHours]);
 
@@ -402,7 +393,22 @@ export default function RideFinder() {
     }
 
     setSelectedBike(bike);
+    
+    // Check minimum booking hours before opening confirmation
     if (pickupDate && pickupTime && dropoffDate && dropoffTime) {
+      const start = new Date(`${pickupDate}T${pickupTime}`);
+      const end = new Date(`${dropoffDate}T${dropoffTime}`);
+      const durationHoursCalculated = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      const minHours = Number(bike.minBookingHours || 0);
+
+      if (minHours > 0 && durationHoursCalculated < minHours) {
+        toast({
+          title: 'Minimum Duration Required',
+          description: `This vehicle requires a minimum booking of ${minHours} hours.`,
+          variant: 'destructive',
+        });
+        return;
+      }
       setIsBookingConfirmationOpen(true);
     } else {
       const now = new Date();
@@ -524,6 +530,8 @@ export default function RideFinder() {
     }
 
     let finalCalculatedAmount: number;
+    let finalDurationHours: number;
+
     try {
       // Try new simple pricing model first
       const hasIndividualRates = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].some(
@@ -542,14 +550,17 @@ export default function RideFinder() {
       ) {
         const priceInfo = calculateSimplePrice(selectedBike, start, end);
         finalCalculatedAmount = Math.round(priceInfo.total);
+        finalDurationHours = priceInfo.durationHours;
       } else {
         // Fallback to legacy pricing slabs
         const priceInfo = calculateRentalPrice(selectedBike, start, end, selectedPricingType);
         finalCalculatedAmount = Math.round(priceInfo.total);
+        finalDurationHours = priceInfo.durationHours;
       }
     } catch (error: any) {
       // Fallback to legacy calculation
-      finalCalculatedAmount = Math.round((selectedBike.pricePerHour || 0) * hours);
+      finalDurationHours = Math.max(hours, minHours);
+      finalCalculatedAmount = Math.round((selectedBike.pricePerHour || 0) * finalDurationHours);
       toast({
         title: 'Pricing Warning',
         description: error.message || 'Using default pricing calculation',
@@ -564,7 +575,7 @@ export default function RideFinder() {
           bike: selectedBike,
           pickupTime: start.toISOString(),
           dropoffTime: end.toISOString(),
-          durationHours: hours,
+          durationHours: finalDurationHours,
           totalAmount: finalCalculatedAmount,
           pricingType: selectedPricingType,
         },

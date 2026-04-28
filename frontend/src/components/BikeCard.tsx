@@ -192,6 +192,12 @@ export const BikeCard = memo(
     // Display static kmLimit value, not kmLimitPerHour
     const displayKmLimit = bike.kmLimit || currentSlab?.included_km || 0;
 
+    const isDurationTooShort = useMemo(() => {
+      if (!pickupDateTime || !dropoffDateTime || durationHours === undefined) return false;
+      const minHours = Number(bike.minBookingHours || 0);
+      return minHours > 0 && durationHours < minHours;
+    }, [pickupDateTime, dropoffDateTime, durationHours, bike.minBookingHours]);
+
     if (variant === 'list') {
       return (
         <div className="bg-card rounded-2xl overflow-hidden shadow-card">
@@ -296,17 +302,19 @@ export const BikeCard = memo(
             )}
             <Button
               className="w-full"
-              variant={bike.available ? 'default' : 'secondary'}
-              disabled={!bike.available || (pickupDateTime && dropoffDateTime && durationHours === 0)}
+              variant={bike.available && !isDurationTooShort ? 'default' : 'secondary'}
+              disabled={!bike.available || isDurationTooShort || (pickupDateTime && dropoffDateTime && durationHours === 0)}
               onClick={() => onRent?.(bike, selectedPricingType)}
             >
               {!isLoggedIn
                 ? 'Login to Book'
-                : pickupDateTime && dropoffDateTime && durationHours === 0
-                  ? 'Invalid time range'
-                  : bike.available
-                    ? 'Rent Now'
-                    : 'Not Available'}
+                : isDurationTooShort
+                  ? `Min ${bike.minBookingHours} hrs required`
+                  : pickupDateTime && dropoffDateTime && durationHours === 0
+                    ? 'Invalid time range'
+                    : bike.available
+                      ? 'Rent Now'
+                      : 'Not Available'}
             </Button>
           </div>
         </div>
@@ -458,17 +466,19 @@ export const BikeCard = memo(
             ) : null}
             <Button
               className={priceInfo || (durationHours && durationHours > 0) ? 'flex-1' : 'w-full'}
-              variant={bike.available ? 'default' : 'secondary'}
-              disabled={!bike.available || (pickupDateTime && dropoffDateTime && durationHours === 0)}
+              variant={bike.available && !isDurationTooShort ? 'default' : 'secondary'}
+              disabled={!bike.available || isDurationTooShort || (pickupDateTime && dropoffDateTime && durationHours === 0)}
               onClick={() => onRent?.(bike, selectedPricingType)}
             >
               {!isLoggedIn
                 ? 'Login to Book'
-                : pickupDateTime && dropoffDateTime && durationHours === 0
-                  ? 'Invalid range'
-                  : bike.available
-                    ? 'Rent Now'
-                    : 'Not Available'}
+                : isDurationTooShort
+                  ? `Min ${bike.minBookingHours}h`
+                  : pickupDateTime && dropoffDateTime && durationHours === 0
+                    ? 'Invalid range'
+                    : bike.available
+                      ? 'Rent Now'
+                      : 'Not Available'}
             </Button>
           </div>
         </div>

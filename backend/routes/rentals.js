@@ -111,7 +111,9 @@ router.post('/', catchAsync(async (req, res) => {
   const durationMs = end.getTime() - start.getTime();
   const durationHours = durationMs / (1000 * 60 * 60);
 
-  if (minHours > 0 && durationHours < minHours) {
+  // Use a small epsilon (1 minute) to avoid floating point issues
+  const EPSILON = 1 / 60; 
+  if (minHours > 0 && (durationHours + EPSILON) < minHours) {
     throw new AppError(`This vehicle requires a minimum booking of ${minHours} hours.`, 400);
   }
 
