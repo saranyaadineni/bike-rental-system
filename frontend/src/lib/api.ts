@@ -182,8 +182,11 @@ export const bikesAPI = {
 export const rentalsAPI = {
   create: (data: any) =>
     apiRequest<any>('/rentals', { method: 'POST', body: JSON.stringify(data) }),
-  getAll: async () => {
-    const data = await apiRequest<any[]>('/rentals');
+  getAll: async (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+    const data = await apiRequest<any[]>(`/rentals?${params.toString()}`);
     return data || [];
   },
   getUserRentals: () => apiRequest<any[]>('/rentals'),

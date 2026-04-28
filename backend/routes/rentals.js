@@ -13,6 +13,7 @@ const router = express.Router();
 // Get all rentals
 router.get('/', authenticateToken, catchAsync(async (req, res) => {
   const query = {};
+  const { startDate, endDate } = req.query;
 
   // If regular user, only show their rentals
   if (req.user && !['admin', 'superadmin'].includes(req.user.role)) {
@@ -24,6 +25,32 @@ router.get('/', authenticateToken, catchAsync(async (req, res) => {
     const bikesAtLocation = await Bike.find({ locationId: req.user.locationId }).select('_id');
     const bikeIds = bikesAtLocation.map(b => b._id);
     query.bikeId = { $in: bikeIds };
+  }
+
+  // Date filtering logic
+  if (startDate || endDate) {
+    const dateQuery = {};
+    if (startDate) {
+      const startOfDay = new Date(startDate);
+      startOfDay.setUTCHours(0, 0, 0, 0); // Normalize to start of day UTC
+      dateQuery.$gte = startOfDay;
+    }
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setUTCHours(23, 59, 59, 999); // Normalize to end of day UTC
+      dateQuery.$lte = endOfDay;
+    }
+    
+    // Search in both createdAt and startTime to be more flexible
+    query.$or = [
+      { createdAt: dateQuery },
+      { startTime: dateQuery }
+    ];
+
+    // Basic validation for date range
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      throw new AppError('Start date cannot be after end date', 400);
+    }
   }
 
   const rentals = await Rental.find(query)

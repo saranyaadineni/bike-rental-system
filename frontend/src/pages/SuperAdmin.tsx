@@ -31,6 +31,7 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  ChevronDown,
 } from 'lucide-react';
 import { HeroImageManager } from '@/components/HeroImageManager';
 import { toast } from '@/hooks/use-toast';
@@ -63,6 +64,10 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const statusStyles = {
   verified: { color: 'bg-accent/10 text-accent', icon: CheckCircle },
@@ -227,6 +232,8 @@ export default function SuperAdmin() {
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [bookingSearchQuery, setBookingSearchQuery] = useState('');
+  const [bookingStartDate, setBookingStartDate] = useState<Date | undefined>(undefined);
+  const [bookingEndDate, setBookingEndDate] = useState<Date | undefined>(undefined);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bottomScrollRef = useRef<HTMLDivElement>(null);
   const [documentsSearchQuery, setDocumentsSearchQuery] = useState('');
@@ -471,7 +478,7 @@ export default function SuperAdmin() {
     if (mounted) {
       loadData();
     }
-  }, [selectedLocationFilter]);
+  }, [selectedLocationFilter, bookingStartDate, bookingEndDate]);
 
   const loadData = async () => {
     try {
@@ -482,7 +489,10 @@ export default function SuperAdmin() {
           usersAPI.getAll(),
           documentsAPI.getAll(),
           locationsAPI.getAll(true),
-          rentalsAPI.getAll(),
+          rentalsAPI.getAll(
+            bookingStartDate ? bookingStartDate.toISOString() : undefined,
+            bookingEndDate ? bookingEndDate.toISOString() : undefined
+          ),
           settingsAPI.getHomeHero(),
           bikesAPI.getSpecs().catch(() => []),
         ]);
@@ -1979,7 +1989,10 @@ export default function SuperAdmin() {
                       (bike?.name || '').toLowerCase().includes(searchLower) ||
                       (user?.name || '').toLowerCase().includes(searchLower) ||
                       (user?.email || '').toLowerCase().includes(searchLower) ||
-                      r.status.toLowerCase().includes(searchLower)
+                      r.status.toLowerCase().includes(searchLower) ||
+                      format(new Date(r.startTime), 'd/M/yyyy').includes(searchLower) ||
+                      format(new Date(r.startTime), 'dd/MM/yyyy').includes(searchLower) ||
+                      new Date(r.startTime).toLocaleDateString().toLowerCase().includes(searchLower)
                     );
                   });
 
@@ -1998,6 +2011,61 @@ export default function SuperAdmin() {
                     value={bookingSearchQuery}
                     onChange={(e) => setBookingSearchQuery(e.target.value)}
                   />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={'outline'}
+                        className={cn(
+                          'w-[200px] justify-start text-left font-normal',
+                          !bookingStartDate && 'text-muted-foreground'
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {bookingStartDate ? format(bookingStartDate, 'PPP') : <span>Start Date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={bookingStartDate}
+                        onSelect={setBookingStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={'outline'}
+                        className={cn(
+                          'w-[200px] justify-start text-left font-normal',
+                          !bookingEndDate && 'text-muted-foreground'
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {bookingEndDate ? format(bookingEndDate, 'PPP') : <span>End Date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={bookingEndDate}
+                        onSelect={setBookingEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {(bookingStartDate || bookingEndDate) && (
+                    <Button variant="ghost" onClick={() => {
+                      setBookingStartDate(undefined);
+                      setBookingEndDate(undefined);
+                    }}>
+                      <X className="h-4 w-4 mr-2" />
+                      Clear Dates
+                    </Button>
+                  )}
                 </div>
 
                 <div className="bg-card rounded-2xl shadow-card border border-border">
