@@ -65,6 +65,11 @@ export default function RideFinder() {
   const [docStatus, setDocStatus] = useState({ allApproved: false, hasDocs: false });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // Validation and duration calculation
+  const validationResult = useMemo(() => {
+    return validateTimeRange(pickupDate, pickupTime, dropoffDate, dropoffTime);
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
+
   useEffect(() => {
     loadBikes();
     const user = getCurrentUser();
@@ -78,10 +83,81 @@ export default function RideFinder() {
     };
 
     window.addEventListener('rideflow:locationChanged', onLocationChanged);
+
+    // Auto-refresh bikes availability every 30 seconds
+    const refreshInterval = setInterval(() => {
+      // Only auto-refresh if we are not in the middle of a search or loading
+      // and if the user is not actively interacting with a dialog
+      const savedLocation = localStorage.getItem('selectedLocation') || undefined;
+      
+      const silentRefresh = async () => {
+        try {
+          // If search fields are filled, refresh availability for those times
+          if (pickupDate && pickupTime && dropoffDate && dropoffTime && validationResult.isValid) {
+            const start = new Date(`${pickupDate}T${pickupTime}`);
+            const end = new Date(`${dropoffDate}T${dropoffTime}`);
+            const available = await bikesAPI.getAvailable(start, end, savedLocation);
+            setBikes(available);
+          } else {
+            // Otherwise just refresh general list for the location
+            const data = await bikesAPI.getAll(savedLocation);
+            setBikes(data);
+          }
+        } catch (e) {
+          // Silent refresh
+        }
+      };
+      
+      silentRefresh();
+    }, 30000); // 30 second refresh for general availability
+
     return () => {
       window.removeEventListener('rideflow:locationChanged', onLocationChanged);
+      clearInterval(refreshInterval);
     };
-  }, []);
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime, validationResult.isValid]);
+
+  // dropoffDT must be calculated after validationResult is declared
+  const pickupDT = useMemo(() => {
+    const dt = getDateTime(pickupDate, pickupTime);
+    if (!dt || isNaN(dt.getTime())) return null;
+    return dt;
+  }, [pickupDate, pickupTime]);
+
+  const dropoffDT = useMemo(() => {
+    const dt = getDateTime(dropoffDate, dropoffTime);
+    if (!dt || isNaN(dt.getTime())) return null;
+    return dt;
+  }, [dropoffDate, dropoffTime]);
+
+  const durationMinutes = useMemo(() => {
+    return validationResult.isValid ? validationResult.durationMinutes : 0;
+  }, [validationResult]);
+
+  const durationHours = useMemo(() => validationResult.isValid ? validationResult.durationHours : 0, [validationResult]);
+
+  const areAllTimeFieldsFilled = useMemo(() => {
+    return !!(pickupDate && pickupTime && dropoffDate && dropoffTime);
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
+
+  const { todayStr, nowHHMM, toHHMM, now } = useMemo(() => {
+    const d = new Date();
+    const tStr = d.toISOString().slice(0, 10);
+    const f = (date: Date) =>
+      `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    return { todayStr: tStr, nowHHMM: f(d), toHHMM: f, now: d };
+  }, []); // Only calculate once on mount to keep identities stable
+
+  const pickupTimeMin = useMemo(() => {
+    return pickupDate === todayStr ? nowHHMM : '00:00';
+  }, [pickupDate, todayStr, nowHHMM]);
+
+  const dropoffTimeMin = useMemo(() => {
+    const baseDropMinDate = dropoffDate === todayStr ? nowHHMM : '00:00';
+    return dropoffDate && pickupDT && dropoffDate === pickupDate
+      ? toHHMM(new Date(pickupDT.getTime() + 30 * 60000))
+      : baseDropMinDate;
+  }, [dropoffDate, todayStr, nowHHMM, pickupDT, pickupDate, toHHMM]);
 
   const checkDocuments = async () => {
     const user = getCurrentUser();
@@ -141,54 +217,6 @@ export default function RideFinder() {
     if (!dateStr || !timeStr) return null;
     return new Date(`${dateStr}T${timeStr}`);
   };
-
-  const { todayStr, nowHHMM, toHHMM, now } = useMemo(() => {
-    const d = new Date();
-    const tStr = d.toISOString().slice(0, 10);
-    const f = (date: Date) =>
-      `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    return { todayStr: tStr, nowHHMM: f(d), toHHMM: f, now: d };
-  }, []); // Only calculate once on mount to keep identities stable
-
-  const pickupTimeMin = useMemo(() => {
-    return pickupDate === todayStr ? nowHHMM : '00:00';
-  }, [pickupDate, todayStr, nowHHMM]);
-
-  // Dropoff must be at least now or pickup + 30m if same day
-  const pickupDT = useMemo(() => {
-    const dt = getDateTime(pickupDate, pickupTime);
-    if (!dt || isNaN(dt.getTime())) return null;
-    return dt;
-  }, [pickupDate, pickupTime]);
-
-  const dropoffTimeMin = useMemo(() => {
-    const baseDropMinDate = dropoffDate === todayStr ? nowHHMM : '00:00';
-    return dropoffDate && pickupDT && dropoffDate === pickupDate
-      ? toHHMM(new Date(pickupDT.getTime() + 30 * 60000))
-      : baseDropMinDate;
-  }, [dropoffDate, todayStr, nowHHMM, pickupDT, pickupDate, toHHMM]);
-
-  const dropoffDT = useMemo(() => {
-    const dt = getDateTime(dropoffDate, dropoffTime);
-    if (!dt || isNaN(dt.getTime())) return null;
-    return dt;
-  }, [dropoffDate, dropoffTime]);
-
-  // Validation and duration calculation
-  const validationResult = useMemo(() => {
-    return validateTimeRange(pickupDate, pickupTime, dropoffDate, dropoffTime);
-  }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
-
-  const areAllTimeFieldsFilled = useMemo(() => {
-    return !!(pickupDate && pickupTime && dropoffDate && dropoffTime);
-  }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
-
-  // Calculate total duration in minutes
-  const durationMinutes = useMemo(() => {
-    return validationResult.isValid ? validationResult.durationMinutes : 0;
-  }, [validationResult]);
-
-  const durationHours = useMemo(() => validationResult.isValid ? validationResult.durationHours : 0, [validationResult]);
 
   const filteredBikes = useMemo(() => {
     return bikes.filter((bike) => {
@@ -520,13 +548,12 @@ export default function RideFinder() {
     }
 
     // Calculate duration and amount using new simple pricing model or legacy
-    const start = pickupDT || new Date(`${pickupDate}T${pickupTime}`);
-    const end = dropoffDT || new Date(`${dropoffDate}T${dropoffTime}`);
-    const hours = durationHours;
+    const startDT = pickupDT || new Date(`${pickupDate}T${pickupTime}`);
+    const endDT = dropoffDT || new Date(`${dropoffDate}T${dropoffTime}`);
 
     // Validate minimum booking hours
     const minHours = Number(selectedBike.minBookingHours || 1);
-    const durationMs = end.getTime() - start.getTime();
+    const durationMs = endDT.getTime() - startDT.getTime();
     const durationHoursCalculated = durationMs / (1000 * 60 * 60);
 
     if (durationHoursCalculated < minHours) {
@@ -540,7 +567,7 @@ export default function RideFinder() {
 
     // Validate pickup lead time (based on vehicle minBookingHours)
     const nowTime = new Date();
-    const leadTimeMs = start.getTime() - nowTime.getTime();
+    const leadTimeMs = startDT.getTime() - nowTime.getTime();
     const leadTimeHoursCalculated = leadTimeMs / (1000 * 60 * 60);
 
     if (leadTimeHoursCalculated < minHours) {
@@ -571,12 +598,12 @@ export default function RideFinder() {
         selectedBike.pricePerWeek ||
         hasTariff
       ) {
-        const priceInfo = calculateSimplePrice(selectedBike, start, end);
+        const priceInfo = calculateSimplePrice(selectedBike, startDT, endDT);
         finalCalculatedAmount = Math.round(priceInfo.total);
         finalDurationHours = priceInfo.durationHours;
       } else {
         // Fallback to legacy pricing slabs
-        const priceInfo = calculateRentalPrice(selectedBike, start, end, selectedPricingType);
+        const priceInfo = calculateRentalPrice(selectedBike, startDT, endDT, selectedPricingType);
         finalCalculatedAmount = Math.round(priceInfo.total);
         finalDurationHours = priceInfo.durationHours;
       }
@@ -594,8 +621,8 @@ export default function RideFinder() {
       state: {
         bookingDetails: {
           bike: selectedBike,
-          pickupTime: start.toISOString(),
-          dropoffTime: end.toISOString(),
+          pickupTime: startDT.toISOString(),
+          dropoffTime: endDT.toISOString(),
           durationHours: finalDurationHours,
           totalAmount: finalCalculatedAmount,
           pricingType: selectedPricingType,

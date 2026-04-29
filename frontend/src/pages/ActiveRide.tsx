@@ -374,9 +374,34 @@ export default function ActiveRide() {
       checkCanExtend(rental);
     }, 60000); // Check every minute
 
+    // Auto-refresh rental data from API every 15 seconds
+    const dataRefreshInterval = setInterval(() => {
+      const user = getCurrentUser();
+      if (user) {
+        // We use a separate function for silent refresh to avoid flickering and isLoading state
+        const silentRefresh = async () => {
+          try {
+            const rentals = await rentalsAPI.getAll();
+            const active = rentals.find((r: any) => {
+              const rentalUserId = r.userId || r.user?.id;
+              return (
+                String(rentalUserId || '') === String(user.id) &&
+                (r.status === 'ongoing' || r.status === 'active' || r.status === 'confirmed')
+              );
+            });
+            if (active) setRental(active);
+          } catch (e) {
+            // Silent fail
+          }
+        };
+        silentRefresh();
+      }
+    }, 15000);
+
     return () => {
       clearInterval(durationInterval);
       clearInterval(checkInterval);
+      clearInterval(dataRefreshInterval);
     };
   }, [rental]);
 

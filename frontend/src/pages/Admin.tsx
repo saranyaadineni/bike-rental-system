@@ -415,27 +415,36 @@ export default function Admin() {
     loadData();
   }, []);
 
-  // Auto-refresh bookings data every 10 seconds when bookings tab is active
+  // Auto-refresh data every 10 seconds for active tabs
   useEffect(() => {
-    if (activeTab === 'bookings' && currentUser && selectedLocationId) {
-      const interval = setInterval(() => {
-        // Only refresh rentals and bikes data filtered by location
-        const refreshBookingsData = async () => {
-          try {
+    if (!currentUser || !selectedLocationId) return;
+
+    const refreshInterval = setInterval(() => {
+      const refreshData = async () => {
+        try {
+          if (activeTab === 'bookings') {
             const bikesData = await bikesAPI.getAll(selectedLocationId);
             setBikes(bikesData);
             const rentalsData = await rentalsAPI.getAll();
             setRentals(rentalsData);
-          } catch (error) {
-            // Silently fail on auto-refresh to avoid spam
-            // Errors are handled silently in production
+          } else if (activeTab === 'bikes' || activeTab === 'allVehicles') {
+            const bikesData = await bikesAPI.getAll(selectedLocationId);
+            setBikes(bikesData);
+          } else if (activeTab === 'users') {
+            const usersData = await usersAPI.getAll();
+            setUsers(usersData);
+          } else if (activeTab === 'documents') {
+            const docsData = await documentsAPI.getAll();
+            setDocuments(docsData);
           }
-        };
-        refreshBookingsData();
-      }, 10000); // Refresh every 10 seconds
+        } catch (error) {
+          // Silent refresh
+        }
+      };
+      refreshData();
+    }, 10000); // 10 second polling
 
-      return () => clearInterval(interval);
-    }
+    return () => clearInterval(refreshInterval);
   }, [activeTab, currentUser, selectedLocationId]);
 
   // Keep "Actual Return Time" locked to real-time when End Ride dialog is open.
@@ -448,25 +457,27 @@ export default function Admin() {
       return;
     }
 
-    const tick = () => {
-      const now = new Date();
-      setSelectedDate(now);
+    const updateTimeAndDelay = (date: Date) => {
+      setSelectedDate(date);
       setSelectedTime(
-        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+        `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
       );
 
-      // Also keep the submitted actualReturnTime in sync (this is what drives delay calc).
       setEndRideData((prev) => {
         if (!prev?.id) return prev;
-        const actualReturnTime = toLocalISOString(now);
-        let delayHours = prev.delay;
+        const actualReturnTime = toLocalISOString(date);
+        let delayHours = '0';
 
         if (actualReturnTime && prev.scheduledEndTime) {
           const actual = new Date(actualReturnTime);
           const scheduled = new Date(prev.scheduledEndTime);
           const diffMs = actual.getTime() - scheduled.getTime();
           const diffMins = Math.floor(diffMs / 60000);
-          const hours = diffMins > 0 ? diffMins / 60 : 0;
+          
+          // Apply 15-minute grace period
+          const GRACE_PERIOD_MINS = 15;
+          const effectiveMins = diffMins > GRACE_PERIOD_MINS ? diffMins : 0;
+          const hours = effectiveMins / 60;
           delayHours = hours.toFixed(2);
         }
 
@@ -478,9 +489,14 @@ export default function Admin() {
       });
     };
 
-    tick();
-    timeTickRef.current = window.setInterval(tick, 15000);
+    // Initialize with current time when dialog opens
+    const now = new Date();
+    updateTimeAndDelay(now);
 
+    // Keep ticking ONLY if the user hasn't manually interacted? 
+    // Actually, for "Admin Forgetting to End Ride", we should probably NOT tick.
+    // The admin should just set the time once.
+    
     return () => {
       if (timeTickRef.current) {
         window.clearInterval(timeTickRef.current);
@@ -558,6 +574,7 @@ export default function Admin() {
       await rentalsAPI.completeRide(endRideData.id, {
         startKm: startVal,
         endKm: endVal,
+        actualReturnTime: endRideData.actualReturnTime,
         // UI uses hours; backend stores delay as a number (historically minutes).
         delay: (delayHours || 0) * 60,
         totalCost: calculatedTotalPrice,
@@ -723,11 +740,30 @@ export default function Admin() {
     }
 
     try {
-      await documentsAPI.updateStatus(docId, 'approved');
+      const response = await documentsAPI.updateStatus(docId, 'approved');
       toast({
         title: 'Document Approved',
         description: 'Document status updated successfully.',
       });
+      
+      // Immediately update local state for real-time UI response
+      setDocuments(prev => prev.map(doc => 
+        doc.id === docId || (doc as any)._id === docId ? { ...doc, status: 'approved' } : doc
+      ));
+      
+      // Update selectedDocumentUser if open
+      if (selectedDocumentUser && selectedDocumentUser.documents) {
+        setSelectedDocumentUser(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            documents: prev.documents?.map(doc => 
+              (doc.id === docId || doc._id === docId) ? { ...doc, status: 'approved' } : doc
+            )
+          };
+        });
+      }
+
       loadData();
     } catch (error: any) {
       if (error.status === 401 || error.status === 403) {
@@ -759,6 +795,26 @@ export default function Admin() {
         title: 'Document Rejected',
         description: 'Document status updated successfully.',
       });
+
+      // Immediately update local state for real-time UI response
+      const rejectedId = docToReject;
+      setDocuments(prev => prev.map(doc => 
+        doc.id === rejectedId || (doc as any)._id === rejectedId ? { ...doc, status: 'rejected' } : doc
+      ));
+
+      // Update selectedDocumentUser if open
+      if (selectedDocumentUser && selectedDocumentUser.documents) {
+        setSelectedDocumentUser(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            documents: prev.documents?.map(doc => 
+              (doc.id === rejectedId || doc._id === rejectedId) ? { ...doc, status: 'rejected' } : doc
+            )
+          };
+        });
+      }
+
       setIsRejectionModalOpen(false);
       setDocToReject(null);
       setRejectionReason('');
@@ -807,6 +863,17 @@ export default function Admin() {
         title: status ? 'User Verified' : 'User Unverified',
         description: `User status updated to ${status ? 'verified' : 'unverified'}.`,
       });
+
+      // Immediately update local state for real-time UI response
+      setUsers(prev => prev.map(user => 
+        user.id === userId ? { ...user, isVerified: status } : user
+      ));
+
+      // Update selectedUser if open
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser(prev => prev ? { ...prev, isVerified: status } : null);
+      }
+
       setIsUserDialogOpen(false);
       setIsDocumentDialogOpen(false);
       loadData();
@@ -2594,7 +2661,7 @@ export default function Admin() {
                   <Input
                     placeholder="Enter Image URL"
                     value={bikeForm.image}
-                    onChange={(e) => setBikeForm(prev => ({ ...prev, image: e.target.value }))}
+                    onChange={(e) => setBikeForm((prev: any) => ({ ...prev, image: e.target.value }))}
                   />
                   <div className="relative">
                     <Input
@@ -2634,7 +2701,7 @@ export default function Admin() {
                         try {
                           const res = await documentsAPI.uploadFile(file, file.name, 'bike_image');
                           if (res?.fileUrl) {
-                            setBikeForm(prev => ({ ...prev, image: res.fileUrl }));
+                            setBikeForm((prev: any) => ({ ...prev, image: res.fileUrl }));
                             toast({
                               title: 'Image uploaded',
                               description: 'Vehicle image has been uploaded',
@@ -2686,7 +2753,7 @@ export default function Admin() {
                           size="sm"
                           className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
                           onClick={() => {
-                            setBikeForm(prev => {
+                            setBikeForm((prev: any) => {
                               const newImages = [...prev.images];
                               newImages[index] = '';
                               return { ...prev, images: newImages };
@@ -2708,7 +2775,7 @@ export default function Admin() {
                           placeholder={`Image URL ${index + 1}`}
                           value={img}
                           onChange={(e) => {
-                            setBikeForm(prev => {
+                            setBikeForm((prev: any) => {
                               const newImages = [...prev.images];
                               newImages[index] = e.target.value;
                               return { ...prev, images: newImages };
@@ -2731,7 +2798,7 @@ export default function Admin() {
                                 'bike_image'
                               );
                               if (res?.fileUrl) {
-                                setBikeForm(prev => {
+                                setBikeForm((prev: any) => {
                                   const newImages = [...prev.images];
                                   newImages[index] = res.fileUrl;
                                   return { ...prev, images: newImages };
@@ -3036,56 +3103,88 @@ export default function Admin() {
                       <Calendar
                         mode="single"
                         selected={selectedDate}
-                        // Date is read-only (real-time) — keep handler no-op.
-                        onSelect={() => {}}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          const newDate = new Date(date);
+                          // Preserve the time from selectedTime
+                          const [hours, mins] = selectedTime.split(':').map(Number);
+                          newDate.setHours(hours, mins);
+                          
+                          setSelectedDate(newDate);
+                          const isoStr = toLocalISOString(newDate);
+                          
+                          // Recalculate delay
+                          let delayHours = '0';
+                          if (endRideData.scheduledEndTime) {
+                            const actual = new Date(isoStr);
+                            const scheduled = new Date(endRideData.scheduledEndTime);
+                            const diffMs = actual.getTime() - scheduled.getTime();
+                            const diffMins = Math.floor(diffMs / 60000);
+                            const GRACE_PERIOD_MINS = 15;
+                            const effectiveMins = diffMins > GRACE_PERIOD_MINS ? diffMins : 0;
+                            delayHours = (effectiveMins / 60).toFixed(2);
+                          }
+                          
+                          setEndRideData({
+                            ...endRideData,
+                            actualReturnTime: isoStr,
+                            delay: delayHours
+                          });
+                        }}
                         disabled={(date) => {
                           try {
                             if (!date) return true;
-
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-
-                            const dateOnly = new Date(date);
-                            dateOnly.setHours(0, 0, 0, 0);
-
-                            // Only allow today's date - disable all other dates
-                            return dateOnly.getTime() !== today.getTime();
+                            const now = new Date();
+                            now.setHours(23, 59, 59, 999);
+                            return date > now; // Can't pick future date
                           } catch {
                             return true;
                           }
-                        }}
-                        modifiers={{
-                          highlighted: (date) => {
-                            try {
-                              if (!date || !endRideData?.rawStartTime) return false;
-                              const bookingStart = new Date(endRideData.rawStartTime);
-                              bookingStart.setHours(0, 0, 0, 0);
-
-                              const today = new Date();
-                              today.setHours(0, 0, 0, 0);
-
-                              const dateOnly = new Date(date);
-                              dateOnly.setHours(0, 0, 0, 0);
-                              return dateOnly >= bookingStart && dateOnly <= today;
-                            } catch {
-                              return false;
-                            }
-                          },
-                        }}
-                        modifiersStyles={{
-                          highlighted: {
-                            backgroundColor: 'hsl(var(--primary) / 0.2)',
-                            color: 'hsl(var(--primary))',
-                            fontWeight: '600',
-                          },
                         }}
                         initialFocus
                       />
                     </PopoverContent>
                   )}
                 </Popover>
-                <Input type="text" value={selectedTime} readOnly className="w-32" />
+                <Input 
+                  type="time" 
+                  value={selectedTime} 
+                  onChange={(e) => {
+                    const time = e.target.value;
+                    setSelectedTime(time);
+                    
+                    if (selectedDate) {
+                      const newDate = new Date(selectedDate);
+                      const [hours, mins] = time.split(':').map(Number);
+                      newDate.setHours(hours, mins);
+                      
+                      const isoStr = toLocalISOString(newDate);
+                      
+                      // Recalculate delay
+                      let delayHours = '0';
+                      if (endRideData.scheduledEndTime) {
+                        const actual = new Date(isoStr);
+                        const scheduled = new Date(endRideData.scheduledEndTime);
+                        const diffMs = actual.getTime() - scheduled.getTime();
+                        const diffMins = Math.floor(diffMs / 60000);
+                        const GRACE_PERIOD_MINS = 15;
+                        const effectiveMins = diffMins > GRACE_PERIOD_MINS ? diffMins : 0;
+                        delayHours = (effectiveMins / 60).toFixed(2);
+                      }
+                      
+                      setEndRideData({
+                        ...endRideData,
+                        actualReturnTime: isoStr,
+                        delay: delayHours
+                      });
+                    }
+                  }} 
+                  className="w-32" 
+                />
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                Set this to the actual time the user returned the vehicle.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="delay">Delay (hours)</Label>

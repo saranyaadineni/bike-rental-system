@@ -219,7 +219,7 @@ router.post('/:id/start', catchAsync(async (req, res) => {
 
 // Complete ride (Alternative endpoint used by frontend)
 router.post('/:id/complete', catchAsync(async (req, res) => {
-  const { endKm, delay, totalCost } = req.body;
+  const { endKm, delay, totalCost, actualReturnTime } = req.body;
   const rental = await Rental.findById(req.params.id);
   if (!rental) throw new AppError('Rental not found', 404);
 
@@ -228,10 +228,40 @@ router.post('/:id/complete', catchAsync(async (req, res) => {
   }
 
   rental.status = 'completed';
-  rental.dropoffTime = new Date();
+  
+  // Scenario: Billing must always use actual return time.
+  // Admin end time should not affect pricing.
+  const returnTime = actualReturnTime ? new Date(actualReturnTime) : new Date();
+  rental.dropoffTime = new Date(); // Record when the record was closed (admin action)
+  rental.actualReturnTime = returnTime; // Record when the bike was actually returned
+
   if (endKm) rental.endKm = endKm;
-  if (delay) rental.delay = delay;
-  if (totalCost) rental.totalCost = totalCost;
+  
+  // Calculate delay based on actualReturnTime - endTime
+  if (rental.endTime) {
+    const scheduledEnd = new Date(rental.endTime);
+    const actualEnd = returnTime;
+    const diffMs = actualEnd.getTime() - scheduledEnd.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    // Scenario 2: User Delay in Returning Bike
+    // Add grace period (e.g., 15 minutes).
+    const GRACE_PERIOD_MINS = 15;
+    
+    if (diffMins > GRACE_PERIOD_MINS) {
+      // If delay exceeds grace, store the full delay
+      rental.delay = diffMins;
+    } else {
+      // Within grace period or on time
+      rental.delay = 0;
+    }
+  }
+
+  // If totalCost is provided (calculated by frontend), use it. 
+  // Otherwise, backend should calculate it (optional enhancement).
+  if (totalCost !== undefined) {
+    rental.totalCost = totalCost;
+  }
   
   await rental.save();
 

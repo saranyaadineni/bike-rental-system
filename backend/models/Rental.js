@@ -21,6 +21,7 @@ const rentalSchema = new mongoose.Schema({
   startKm: { type: Number },
   endKm: { type: Number },
   delay: { type: Number, default: 0 },
+  actualReturnTime: { type: Date },
   reminderSent: { type: Boolean, default: false }
 }, { timestamps: true });
 

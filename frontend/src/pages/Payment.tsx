@@ -210,6 +210,31 @@ export default function Payment() {
         theme: {
           color: '#F97316',
         },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+          },
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay using UPI',
+                instruments: [
+                  {
+                    method: 'upi',
+                    vpa: true,
+                    qr: true,
+                  },
+                ],
+              },
+            },
+            sequence: ['block.upi'],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
+        },
       };
 
       const rzp1 = new (window as any).Razorpay(options);

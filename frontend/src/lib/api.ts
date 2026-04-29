@@ -197,7 +197,13 @@ export const rentalsAPI = {
   startRide: (id: string) => apiRequest<any>(`/rentals/${id}/start`, { method: 'POST' }),
   completeRide: (
     id: string,
-    data?: { startKm?: number; endKm?: number; delay?: number; totalCost?: number }
+    data?: {
+      startKm?: number;
+      endKm?: number;
+      delay?: number;
+      totalCost?: number;
+      actualReturnTime?: string;
+    }
   ) =>
     apiRequest<any>(`/rentals/${id}/status`, {
       method: 'PATCH',
