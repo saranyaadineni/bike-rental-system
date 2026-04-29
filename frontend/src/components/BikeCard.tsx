@@ -154,9 +154,24 @@ export const BikeCard = memo(
       availableSlabs[0] || 'hourly'
     );
 
+    const isDurationTooShort = useMemo(() => {
+      if (!pickupDateTime || !dropoffDateTime || durationHours === undefined) return false;
+      const minHours = Number(bike.minBookingHours || 1);
+      return durationHours < minHours;
+    }, [pickupDateTime, dropoffDateTime, durationHours, bike.minBookingHours]);
+
+    const isLeadTimeInsufficient = useMemo(() => {
+      if (!pickupDateTime) return false;
+      const now = new Date();
+      const diffMs = pickupDateTime.getTime() - now.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      const minHours = Number(bike.minBookingHours || 1);
+      return diffHours < minHours;
+    }, [pickupDateTime, bike.minBookingHours]);
+
     // Calculate price based on new simple pricing model or legacy
     const priceInfo = useMemo(() => {
-      if (!pickupDateTime || !dropoffDateTime) {
+      if (!pickupDateTime || !dropoffDateTime || isDurationTooShort || isLeadTimeInsufficient) {
         return null;
       }
 
@@ -174,11 +189,12 @@ export const BikeCard = memo(
         }
         // Fallback to legacy pricing slabs
         return calculateRentalPrice(bike, pickupDateTime, dropoffDateTime, selectedPricingType);
-      } catch (error) {
-        console.error('Price calculation error:', error);
+      } catch (error: any) {
+        // Only log once to avoid console noise if called in render
+        console.error('Price calculation error for bike:', bike.name, error.message);
         return null;
       }
-    }, [bike, pickupDateTime, dropoffDateTime, selectedPricingType]);
+    }, [bike, pickupDateTime, dropoffDateTime, selectedPricingType, isDurationTooShort]);
 
     // Get pricing slab info for display
     const currentSlab = bike.pricingSlabs?.[selectedPricingType];
@@ -191,12 +207,6 @@ export const BikeCard = memo(
       0;
     // Display static kmLimit value, not kmLimitPerHour
     const displayKmLimit = bike.kmLimit || currentSlab?.included_km || 0;
-
-    const isDurationTooShort = useMemo(() => {
-      if (!pickupDateTime || !dropoffDateTime || durationHours === undefined) return false;
-      const minHours = Number(bike.minBookingHours || 0);
-      return minHours > 0 && durationHours < minHours;
-    }, [pickupDateTime, dropoffDateTime, durationHours, bike.minBookingHours]);
 
     if (variant === 'list') {
       return (
@@ -263,10 +273,10 @@ export const BikeCard = memo(
                 <span className="font-semibold">{displayKmLimit}</span>
                 <span className="text-muted-foreground">km</span>
               </div>
-              {bike.minBookingHours && Number(bike.minBookingHours) > 0 && (
+              {bike.minBookingHours && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  <span>Min: {bike.minBookingHours} hrs</span>
+                  <span>Min: {bike.minBookingHours || 1} hrs</span>
                 </div>
               )}
             </div>
@@ -292,30 +302,40 @@ export const BikeCard = memo(
                 </div>
               </div>
             )}
-            {priceInfo && (
+            {priceInfo && !isDurationTooShort && !isLeadTimeInsufficient ? (
               <div className="text-sm font-semibold">
                 Total: ₹{Math.round(priceInfo.total)}
                 {priceInfo.hasWeekend && (
                   <span className="text-xs text-accent ml-2">(Weekend surge)</span>
                 )}
               </div>
-            )}
+            ) : isDurationTooShort ? (
+              <div className="text-sm font-semibold text-destructive">
+                Minimum booking: {bike.minBookingHours || 1} hrs
+              </div>
+            ) : isLeadTimeInsufficient ? (
+              <div className="text-sm font-semibold text-destructive">
+                Book at least {bike.minBookingHours || 1} hrs in advance
+              </div>
+            ) : null}
             <Button
               className="w-full"
-              variant={bike.available && !isDurationTooShort ? 'default' : 'secondary'}
-              disabled={!bike.available || isDurationTooShort || (pickupDateTime && dropoffDateTime && durationHours === 0)}
-              onClick={() => onRent?.(bike, selectedPricingType)}
-            >
-              {!isLoggedIn
-                ? 'Login to Book'
-                : isDurationTooShort
-                  ? `Min ${bike.minBookingHours} hrs required`
-                  : pickupDateTime && dropoffDateTime && durationHours === 0
-                    ? 'Invalid time range'
-                    : bike.available
-                      ? 'Rent Now'
-                      : 'Not Available'}
-            </Button>
+              variant={bike.available && !isDurationTooShort && !isLeadTimeInsufficient ? 'default' : 'secondary'}
+              disabled={!bike.available || isDurationTooShort || isLeadTimeInsufficient || (pickupDateTime && dropoffDateTime && durationHours === 0)}
+          onClick={() => onRent?.(bike, selectedPricingType)}
+        >
+          {!isLoggedIn
+            ? 'Login to Book'
+            : isDurationTooShort
+              ? `Min ${bike.minBookingHours || 1}h`
+              : isLeadTimeInsufficient
+                ? `Min ${bike.minBookingHours || 1}h Advance`
+                : pickupDateTime && dropoffDateTime && durationHours === 0
+                  ? 'Invalid time range'
+                  : bike.available
+                    ? 'Rent Now'
+                    : 'Not Available'}
+        </Button>
           </div>
         </div>
       );
@@ -398,10 +418,10 @@ export const BikeCard = memo(
                   ? `${currentSlab.minimum_value} hrs`
                   : `₹${currentSlab.minimum_value}`}
               </div>
-            ) : bike.minBookingHours && Number(bike.minBookingHours) > 0 ? (
+            ) : bike.minBookingHours ? (
               <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                Min: {bike.minBookingHours} hrs
+                Min: {bike.minBookingHours || 1} hrs
               </div>
             ) : null}
           </div>
@@ -433,7 +453,25 @@ export const BikeCard = memo(
           )}
 
           <div className="flex items-center justify-between gap-3 mt-auto">
-            {priceInfo ? (
+            {isDurationTooShort ? (
+              <div className="flex flex-col">
+                <div className="text-sm font-semibold text-destructive">
+                  Minimum booking:
+                </div>
+                <div className="text-xs font-bold text-destructive">
+                  {bike.minBookingHours || 1} hrs required
+                </div>
+              </div>
+            ) : isLeadTimeInsufficient ? (
+              <div className="flex flex-col">
+                <div className="text-sm font-semibold text-destructive">
+                  Advance booking:
+                </div>
+                <div className="text-xs font-bold text-destructive">
+                  Min {bike.minBookingHours || 1} hrs lead time
+                </div>
+              </div>
+            ) : priceInfo ? (
               <div className="flex flex-col">
                 <div className="font-bold text-xl text-foreground">
                   ₹{Math.round(priceInfo.total)}
@@ -465,20 +503,22 @@ export const BikeCard = memo(
               </div>
             ) : null}
             <Button
-              className={priceInfo || (durationHours && durationHours > 0) ? 'flex-1' : 'w-full'}
-              variant={bike.available && !isDurationTooShort ? 'default' : 'secondary'}
-              disabled={!bike.available || isDurationTooShort || (pickupDateTime && dropoffDateTime && durationHours === 0)}
+              className={isDurationTooShort || isLeadTimeInsufficient || priceInfo || (durationHours && durationHours > 0) ? 'flex-1' : 'w-full'}
+              variant={bike.available && !isDurationTooShort && !isLeadTimeInsufficient ? 'default' : 'secondary'}
+              disabled={!bike.available || isDurationTooShort || isLeadTimeInsufficient || (pickupDateTime && dropoffDateTime && durationHours === 0)}
               onClick={() => onRent?.(bike, selectedPricingType)}
             >
               {!isLoggedIn
                 ? 'Login to Book'
                 : isDurationTooShort
-                  ? `Min ${bike.minBookingHours}h`
-                  : pickupDateTime && dropoffDateTime && durationHours === 0
-                    ? 'Invalid range'
-                    : bike.available
-                      ? 'Rent Now'
-                      : 'Not Available'}
+                  ? `Min ${bike.minBookingHours || 1}h`
+                  : isLeadTimeInsufficient
+                    ? `Min ${bike.minBookingHours || 1}h Advance`
+                    : pickupDateTime && dropoffDateTime && durationHours === 0
+                      ? 'Invalid time range'
+                      : bike.available
+                        ? 'Rent Now'
+                        : 'Not Available'}
             </Button>
           </div>
         </div>

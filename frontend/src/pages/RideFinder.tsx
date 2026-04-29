@@ -194,8 +194,15 @@ export default function RideFinder() {
     return bikes.filter((bike) => {
       const matchesSearch = bike.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = selectedType === 'all' || bike.type === selectedType;
-      
-      return matchesSearch && matchesType;
+
+      // Filter by duration if time is selected
+      let matchesDuration = true;
+      if (validationResult.isValid && durationHours > 0) {
+        const minHours = Number(bike.minBookingHours || 1);
+        matchesDuration = durationHours >= minHours;
+      }
+
+      return matchesSearch && matchesType && matchesDuration;
     });
   }, [bikes, searchQuery, selectedType, validationResult.isValid, durationHours]);
 
@@ -394,14 +401,15 @@ export default function RideFinder() {
 
     setSelectedBike(bike);
     
-    // Check minimum booking hours before opening confirmation
+    // Check minimum booking hours and lead time before opening confirmation
     if (pickupDate && pickupTime && dropoffDate && dropoffTime) {
       const start = new Date(`${pickupDate}T${pickupTime}`);
       const end = new Date(`${dropoffDate}T${dropoffTime}`);
       const durationHoursCalculated = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-      const minHours = Number(bike.minBookingHours || 0);
+      const minHours = Number(bike.minBookingHours || 1);
 
-      if (minHours > 0 && durationHoursCalculated < minHours) {
+      // 1. Duration validation
+      if (durationHoursCalculated < minHours) {
         toast({
           title: 'Minimum Duration Required',
           description: `This vehicle requires a minimum booking of ${minHours} hours.`,
@@ -409,6 +417,21 @@ export default function RideFinder() {
         });
         return;
       }
+
+      // 2. Lead time validation
+      const now = new Date();
+      const leadTimeMs = start.getTime() - now.getTime();
+      const leadTimeHours = leadTimeMs / (1000 * 60 * 60);
+
+      if (leadTimeHours < minHours) {
+        toast({
+          title: 'Advance Booking Required',
+          description: `This vehicle must be booked at least ${minHours} hours in advance.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       setIsBookingConfirmationOpen(true);
     } else {
       const now = new Date();
@@ -502,11 +525,11 @@ export default function RideFinder() {
     const hours = durationHours;
 
     // Validate minimum booking hours
-    const minHours = Number(selectedBike.minBookingHours || 0);
+    const minHours = Number(selectedBike.minBookingHours || 1);
     const durationMs = end.getTime() - start.getTime();
     const durationHoursCalculated = durationMs / (1000 * 60 * 60);
 
-    if (minHours > 0 && durationHoursCalculated < minHours) {
+    if (durationHoursCalculated < minHours) {
       toast({
         title: 'Minimum Duration Required',
         description: `This vehicle requires a minimum booking of ${minHours} hours.`,
@@ -515,15 +538,15 @@ export default function RideFinder() {
       return;
     }
 
-    // Validate pickup lead time (e.g., at least 30 minutes from now)
+    // Validate pickup lead time (based on vehicle minBookingHours)
     const nowTime = new Date();
     const leadTimeMs = start.getTime() - nowTime.getTime();
-    const leadTimeMins = leadTimeMs / (1000 * 60);
+    const leadTimeHoursCalculated = leadTimeMs / (1000 * 60 * 60);
 
-    if (leadTimeMins < 15) { // 15 minute lead time
+    if (leadTimeHoursCalculated < minHours) {
       toast({
-        title: 'Invalid Pickup Time',
-        description: 'Pickup time must be at least 15 minutes from now.',
+        title: 'Advance Booking Required',
+        description: `This vehicle must be booked at least ${minHours} hours in advance.`,
         variant: 'destructive',
       });
       return;
@@ -558,14 +581,12 @@ export default function RideFinder() {
         finalDurationHours = priceInfo.durationHours;
       }
     } catch (error: any) {
-      // Fallback to legacy calculation
-      finalDurationHours = Math.max(hours, minHours);
-      finalCalculatedAmount = Math.round((selectedBike.pricePerHour || 0) * finalDurationHours);
       toast({
-        title: 'Pricing Warning',
-        description: error.message || 'Using default pricing calculation',
-        variant: 'default',
+        title: 'Booking Error',
+        description: error.message || 'Invalid booking parameters.',
+        variant: 'destructive',
       });
+      return;
     }
 
     setIsBookingConfirmationOpen(false);
@@ -1057,7 +1078,9 @@ export default function RideFinder() {
                   const hours = durationHours;
 
                   let priceInfo: any = null;
-                  if (start && end) {
+                  const isDurationTooShort = start && end && hours < Number(selectedBike.minBookingHours || 1);
+
+                  if (start && end && !isDurationTooShort) {
                     try {
                       // Try new simple pricing model first (same logic as BikeCard)
                       const hasIndividualRates = [

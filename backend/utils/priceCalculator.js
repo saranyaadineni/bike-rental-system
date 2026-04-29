@@ -76,11 +76,18 @@ export function getPricingSlab(bike, durationHours) {
  */
 export function calculateRentalPrice(bike, startDate, endDate, pricingType, actualKm = null) {
   const durationMs = endDate.getTime() - startDate.getTime();
-  const durationHours = durationMs / (1000 * 60 * 60);
+  const actualDurationHours = durationMs / (1000 * 60 * 60);
 
-  if (durationHours <= 0) {
+  if (actualDurationHours <= 0) {
     throw new Error('Drop-off time must be after pick-up time');
   }
+
+  // Check minimum booking hours
+  const minBookingHours = bike.minBookingHours || 1;
+  if (actualDurationHours < minBookingHours) {
+    throw new Error(`Minimum booking duration is ${minBookingHours} hours`);
+  }
+  const durationHours = actualDurationHours;
 
   // Get pricing slab
   let pricingSlab = null;
@@ -163,6 +170,10 @@ export function calculateRentalPrice(bike, startDate, endDate, pricingType, actu
  * @returns {Object} Price breakdown
  */
 function calculateLegacyPrice(bike, durationHours, actualKm = null) {
+  const minBookingHours = bike.minBookingHours || 1;
+  if (durationHours < minBookingHours) {
+    throw new Error(`Minimum booking duration is ${minBookingHours} hours`);
+  }
   const basePrice = (bike.pricePerHour || 0) * durationHours;
   
   // Calculate excess km charges (if kmLimit exists)

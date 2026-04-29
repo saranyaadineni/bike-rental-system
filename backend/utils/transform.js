@@ -45,7 +45,7 @@ export function transformBike(bike) {
     weekendRate: bikeObj.weekendRate || null,
     excessKmCharge: bikeObj.excessKmCharge || null,
     kmLimitPerHour: bikeObj.kmLimitPerHour || null,
-    minBookingHours: bikeObj.minBookingHours || null,
+    minBookingHours: (bikeObj.minBookingHours !== undefined && bikeObj.minBookingHours !== null && bikeObj.minBookingHours > 0) ? bikeObj.minBookingHours : 1,
     gstPercentage: bikeObj.gstPercentage !== undefined && bikeObj.gstPercentage !== null ? bikeObj.gstPercentage : 18.0,
     weekendSurgeMultiplier: bikeObj.weekendSurgeMultiplier || 1.0,
     pricingSlabs: bikeObj.pricingSlabs || null,

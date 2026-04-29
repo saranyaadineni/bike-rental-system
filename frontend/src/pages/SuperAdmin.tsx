@@ -3323,7 +3323,11 @@ export default function SuperAdmin() {
                     if (!bikeForm.excessKmCharge) errors.excessKmCharge = 'Excess KM charge is required';
                     if (!bikeForm.kmLimitPerHour) errors.kmLimitPerHour = 'KM limit per hour is required';
                     if (!bikeForm.kmLimit) errors.kmLimit = 'KM limit is required';
-                    if (!bikeForm.minBookingHours) errors.minBookingHours = 'Min booking hours is required';
+                    if (!bikeForm.minBookingHours) {
+                      errors.minBookingHours = 'Min booking hours is required';
+                    } else if (parseFloat(bikeForm.minBookingHours) < 1) {
+                      errors.minBookingHours = 'Min booking hours must be at least 1';
+                    }
                     if (bikeForm.gstPercentage === undefined || bikeForm.gstPercentage === '') errors.gstPercentage = 'GST percentage is required';
                     if (!bikeForm.image) errors.image = 'Vehicle image is required';
 

@@ -343,13 +343,10 @@ export default function ActiveRide() {
       }
 
       return priceInfo ? priceInfo.total : 0;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Price calculation error:', error);
-      // Fallback to simple calculation
-      const hours = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
-      const basePrice = hours * (bike.pricePerHour || 0);
-      const gstPercentage = bike.gstPercentage || 18.0;
-      return basePrice * (1 + gstPercentage / 100);
+      // Fallback to the amount already stored in the rental object
+      return rental.totalAmount || 0;
     }
   };
 

@@ -2794,6 +2794,15 @@ export default function Admin() {
                       }
                     }
 
+                    if (parseFloat(bikeForm.minBookingHours) < 1) {
+                      toast({
+                        title: 'Invalid Value',
+                        description: 'Min Booking Hours must be at least 1.',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+
                     if (isUploading) {
                       toast({
                         title: 'Please wait',

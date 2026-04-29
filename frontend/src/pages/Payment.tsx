@@ -139,27 +139,18 @@ export default function Payment() {
 
     // Ensure priceInfo is valid
     if (!priceInfo || !priceInfo.total) {
-      console.warn('Price calculation returned invalid result, using fallback');
-      priceInfo = {
-        basePrice: totalAmount / 1.18, // Reverse calculate base from total (assuming 18% GST)
-        gstPercentage: bike.gstPercentage || 18.0,
-        gstAmount: (totalAmount / 1.18) * ((bike.gstPercentage || 18.0) / 100),
-        total: totalAmount,
-        subtotal: totalAmount / 1.18,
-      };
+      throw new Error('Price calculation returned invalid result');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Price calculation error:', error);
-    // Fallback calculation
-    const gstPct = bike.gstPercentage || 18.0;
-    const base = totalAmount / (1 + gstPct / 100);
-    priceInfo = {
-      basePrice: base,
-      gstPercentage: gstPct,
-      gstAmount: base * (gstPct / 100),
-      total: totalAmount,
-      subtotal: base,
-    };
+    toast({
+      title: 'Pricing Error',
+      description: error.message || 'Unable to calculate price. Please try again.',
+      variant: 'destructive',
+    });
+    // Redirect back if price cannot be calculated
+    setTimeout(() => navigate('/ride-finder'), 3000);
+    return null;
   }
 
   const handlePayment = async () => {

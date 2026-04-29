@@ -19,7 +19,7 @@ const validateNumericFields = (fields, data) => {
     kmLimitPerHour: { maxLen: 3, maxVal: 999 },
     kmLimit: { maxLen: 3, maxVal: 999 },
     excessKmCharge: { maxLen: 4, maxVal: 9999 },
-    minBookingHours: { maxLen: 2, maxVal: 24 },
+    minBookingHours: { maxLen: 2, maxVal: 24, minVal: 1 },
     gstPercentage: { maxLen: 3, maxVal: 100 }
   };
 
@@ -38,6 +38,9 @@ const validateNumericFields = (fields, data) => {
         }
         if (val > config.maxVal) {
           return `${field} exceeds maximum value of ${config.maxVal}`;
+        }
+        if (config.minVal !== undefined && val < config.minVal) {
+          return `${field} must be at least ${config.minVal}`;
         }
       }
 

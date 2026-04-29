@@ -106,14 +106,23 @@ router.post('/', catchAsync(async (req, res) => {
   const bike = await Bike.findById(bikeId);
   if (!bike) throw new AppError('Bike not found', 404);
 
+  // Use a small epsilon (1 minute) to avoid floating point issues
+  const EPSILON = 1 / 60;
+
+  // Validate pickup lead time (based on vehicle minBookingHours)
+  const minHours = Number(bike.minBookingHours || 1);
+  const leadTimeMs = start.getTime() - now.getTime();
+  const leadTimeHours = leadTimeMs / (1000 * 60 * 60);
+
+  if ((leadTimeHours + EPSILON) < minHours) {
+    throw new AppError(`This vehicle must be booked at least ${minHours} hours in advance.`, 400);
+  }
+
   // Validate minimum booking hours
-  const minHours = Number(bike.minBookingHours || 0);
   const durationMs = end.getTime() - start.getTime();
   const durationHours = durationMs / (1000 * 60 * 60);
 
-  // Use a small epsilon (1 minute) to avoid floating point issues
-  const EPSILON = 1 / 60; 
-  if (minHours > 0 && (durationHours + EPSILON) < minHours) {
+  if ((durationHours + EPSILON) < minHours) {
     throw new AppError(`This vehicle requires a minimum booking of ${minHours} hours.`, 400);
   }
 

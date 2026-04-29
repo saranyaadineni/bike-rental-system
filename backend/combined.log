@@ -302,3 +302,7 @@
 {"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-27T10:19:53.193Z"}
 {"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-28T09:06:05.847Z"}
 {"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-28T10:43:04.494Z"}
+{"level":"error","message":"❌ Port 9000 is already in use","timestamp":"2026-04-28T12:30:35.287Z"}
+{"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-28T12:48:50.015Z"}
+{"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-28T13:43:56.623Z"}
+{"level":"info","message":"🚀 Server running on port 9000","timestamp":"2026-04-28T13:58:34.386Z"}

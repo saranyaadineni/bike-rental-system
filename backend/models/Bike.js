@@ -30,7 +30,7 @@ const bikeSchema = new mongoose.Schema({
   weekendRate: { type: Number }, // Fri-Sun hourly rate
   excessKmCharge: { type: Number },
   kmLimitPerHour: { type: Number },
-  minBookingHours: { type: Number, default: 0 },
+  minBookingHours: { type: Number, default: 1, min: 1 },
 
   kmLimit: { type: Number },
   // New pricing model

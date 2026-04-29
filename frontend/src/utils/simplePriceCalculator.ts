@@ -46,9 +46,12 @@ export function calculateSimplePrice(
     throw new Error('Drop-off time must be after pick-up time');
   }
 
-  // Check minimum booking hours and use effective duration for pricing
-  const minHours = bike.minBookingHours || 0;
-  const durationHours = Math.max(actualDurationHours, minHours);
+  // Check minimum booking hours
+  const minHours = bike.minBookingHours || 1;
+  if (actualDurationHours < minHours) {
+    throw new Error(`Minimum booking duration is ${minHours} hours`);
+  }
+  const durationHours = actualDurationHours;
 
   // Check if we have the new pricing fields
   const hasPrice12Hours = bike.price12Hours && bike.price12Hours > 0;
@@ -96,7 +99,7 @@ export function calculateSimplePrice(
     }
 
     basePrice = tariffCost;
-    breakdown = minHours > 0 && actualDurationHours < minHours
+    breakdown = actualDurationHours < minHours
       ? `Total for ${minHours}h (Minimum booking applied)`
       : `Total for ${durationHours.toFixed(1)} hrs`;
 
@@ -116,7 +119,7 @@ export function calculateSimplePrice(
     basePrice = bike.price12Hours!;
     pricingType = '12hours';
     const hours = Math.round(durationHours);
-    breakdown = minHours > 0 && actualDurationHours < minHours
+    breakdown = actualDurationHours < minHours
       ? `12h Package (Min ${minHours}h booking)`
       : `Total for ${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
   }
@@ -130,7 +133,7 @@ export function calculateSimplePrice(
   else if (bike.pricePerHour) {
     basePrice = bike.pricePerHour * durationHours;
     pricingType = 'hourly';
-    breakdown = minHours > 0 && actualDurationHours < minHours
+    breakdown = actualDurationHours < minHours
       ? `₹${bike.pricePerHour}/hr × ${minHours}h (Minimum applied) = ₹${basePrice.toFixed(2)}`
       : `${durationHours.toFixed(1)} hrs × ₹${bike.pricePerHour} = ₹${basePrice.toFixed(2)}`;
   }
