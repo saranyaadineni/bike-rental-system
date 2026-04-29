@@ -79,7 +79,8 @@ export default function ContactUs() {
     e.preventDefault();
 
     // Email validation regex
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,20}$/;
+    const trimmedEmail = formData.email.trim();
 
     if (!formData.firstName.trim()) {
       toast({
@@ -90,7 +91,7 @@ export default function ContactUs() {
       return;
     }
 
-    if (!formData.email.trim()) {
+    if (!trimmedEmail) {
       toast({
         title: 'Validation Error',
         description: 'Email is required.',
@@ -99,7 +100,7 @@ export default function ContactUs() {
       return;
     }
 
-    if (!emailRegex.test(formData.email)) {
+    if (!emailRegex.test(trimmedEmail)) {
       toast({
         title: 'Invalid Email',
         description: 'Please enter a valid email address (e.g., example@gmail.com).',
@@ -108,7 +109,7 @@ export default function ContactUs() {
       return;
     }
 
-    if (formData.email.length > 100) {
+    if (trimmedEmail.length > 100) {
       toast({
         title: 'Validation Error',
         description: 'Email cannot exceed 100 characters.',
@@ -143,7 +144,7 @@ export default function ContactUs() {
         description: formData.message,
         locationId: selectedLocationId,
         guestName: `${formData.firstName} ${formData.lastName}`.trim(),
-        guestEmail: formData.email,
+        guestEmail: trimmedEmail,
       });
 
       const ticketIdStr = ticket._id.toString().slice(-8).toUpperCase();

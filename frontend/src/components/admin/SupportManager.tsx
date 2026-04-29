@@ -117,8 +117,18 @@ export function SupportManager() {
     loadTickets();
   }, []);
 
-  const handleTicketUpdated = async () => {
-    // Reload list but keep selected ticket open and updated
+  const handleTicketUpdated = async (updatedTicket?: Ticket) => {
+    // If we have the updated ticket, update state immediately for instant UI feedback
+    if (updatedTicket) {
+      setTickets((prev) =>
+        prev.map((t) => (t._id === updatedTicket._id ? updatedTicket : t))
+      );
+      if (selectedTicket?._id === updatedTicket._id) {
+        setSelectedTicket(updatedTicket);
+      }
+    }
+
+    // Still reload list to ensure everything is in sync
     try {
       const data = await supportAPI.getAll();
       setTickets(data);
@@ -325,7 +335,7 @@ function AdminTicketDetailSheet({
   ticket: Ticket;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdate: () => void;
+  onUpdate: (updatedTicket?: Ticket) => void;
 }) {
   const [currentTicket, setCurrentTicket] = useState<Ticket>(ticket);
   const [newMessage, setNewMessage] = useState('');
@@ -384,7 +394,7 @@ function AdminTicketDetailSheet({
       setNewMessage('');
       setIsEmailReply(false);
       setCurrentTicket(result.ticket);
-      onUpdate();
+      onUpdate(result.ticket);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -419,7 +429,7 @@ function AdminTicketDetailSheet({
       setNewMessage('');
       setFiles([]);
       setCurrentTicket(updatedTicket);
-      onUpdate();
+      onUpdate(updatedTicket);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
     } finally {
@@ -434,7 +444,7 @@ function AdminTicketDetailSheet({
       toast({ title: 'Success', description: `Status updated to ${newStatus}` });
       const updated = await supportAPI.getById(ticket._id);
       setCurrentTicket(updated);
-      onUpdate();
+      onUpdate(updated);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
     } finally {
@@ -449,7 +459,7 @@ function AdminTicketDetailSheet({
       toast({ title: 'Success', description: `Priority updated to ${newPriority}` });
       const updated = await supportAPI.getById(ticket._id);
       setCurrentTicket(updated);
-      onUpdate();
+      onUpdate(updated);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to update priority', variant: 'destructive' });
     } finally {

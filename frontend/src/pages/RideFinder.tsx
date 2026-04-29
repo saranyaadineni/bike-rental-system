@@ -43,6 +43,11 @@ const bikeTypes = [
   { value: 'scooter', label: 'Scooter', icon: BikeIcon },
 ];
 
+const getDateTime = (dateStr: string, timeStr: string) => {
+  if (!dateStr || !timeStr) return null;
+  return new Date(`${dateStr}T${timeStr}`);
+};
+
 export default function RideFinder() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -211,11 +216,6 @@ export default function RideFinder() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getDateTime = (dateStr: string, timeStr: string) => {
-    if (!dateStr || !timeStr) return null;
-    return new Date(`${dateStr}T${timeStr}`);
   };
 
   const filteredBikes = useMemo(() => {

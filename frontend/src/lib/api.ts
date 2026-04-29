@@ -345,8 +345,8 @@ export const heroImagesAPI = {
 };
 
 export const supportAPI = {
-  getAll: () => apiRequest<any[]>('/support'),
-  getById: (id: string) => apiRequest<any>(`/support/${id}`),
+  getAll: () => apiRequest<any[]>(`/support?_t=${Date.now()}`),
+  getById: (id: string) => apiRequest<any>(`/support/${id}?_t=${Date.now()}`),
   create: (data: any) =>
     apiRequest<any>('/support', { method: 'POST', body: JSON.stringify(data) }),
   addMessage: (id: string, data: { content: string; attachments?: string[] }) =>

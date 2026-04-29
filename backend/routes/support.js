@@ -226,10 +226,13 @@ router.post('/', async (req, res) => {
     // Server-side validation
     if (category === 'contact') {
       console.log('[SUPPORT CREATE] Validating guest contact request');
-      if (!guestEmail || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(guestEmail)) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,20}$/;
+      const trimmedEmail = (guestEmail || '').trim();
+
+      if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
         return res.status(400).json({ message: 'A valid email address is required.' });
       }
-      if (guestEmail.length > 100) {
+      if (trimmedEmail.length > 100) {
         return res.status(400).json({ message: 'Email cannot exceed 100 characters.' });
       }
       if (!description || description.trim().length === 0) {
