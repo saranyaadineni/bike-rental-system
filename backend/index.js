@@ -96,18 +96,31 @@ const allowedOrigins = [
   "https://bikes-ay5i.vercel.app",
   "https://bikes-green.vercel.app",
   "https://bike.speshway.site",
-  process.env.PUBLIC_BASE_URL
+  process.env.PUBLIC_BASE_URL,
+  process.env.FRONTEND_URL
 ].filter(Boolean);
+
+// Also add any additional origins from ALLOWED_ORIGINS env var (comma-separated)
+if (process.env.ALLOWED_ORIGINS) {
+  const additionalOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+  allowedOrigins.push(...additionalOrigins);
+}
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like Postman, mobile apps)
     if (!origin) return callback(null, true);
 
+    // Allow all origins in development
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     } else {
       console.error("❌ CORS Blocked:", origin);
+      console.error("   Allowed origins:", allowedOrigins);
       return callback(new Error("Not allowed by CORS"));
     }
   },

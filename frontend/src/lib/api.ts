@@ -2,18 +2,20 @@ import { handleApiError, isAuthError, logError, AppApiError } from './errorHandl
 
 // Get API base URL - normalize to always include "/api"
 const getApiBase = () => {
-  // Use VITE_API_URL if provided (for any environment)
+  // Highest priority: explicit VITE_API_URL environment variable
   if (import.meta.env.VITE_API_URL) {
     const raw = String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '');
     return raw.endsWith('/api') ? raw : `${raw}/api`;
   }
+  // Second priority: VITE_API_BASE
   if (import.meta.env.VITE_API_BASE) {
     const raw = String(import.meta.env.VITE_API_BASE).trim().replace(/\/+$/, '');
     return raw.endsWith('/api') ? raw : `${raw}/api`;
   }
-  // In production, use relative path to same origin for best compatibility
+  // Third priority: use production backend domain if we know it
   if (import.meta.env.PROD) {
-    return '/api';
+    // Try to use the Render backend as fallback
+    return 'https://bikes-5-zosq.onrender.com/api';
   }
   // In development, use localhost
   return '/api';
@@ -56,8 +58,10 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const isPublic =
     path.includes('/bikes') || path.includes('/locations') || path.includes('/auth/login');
 
+  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+
   console.log(
-    `[API] ${init.method || 'GET'} ${path} - Token present: ${!!token}, isPublic: ${isPublic}`
+    `[API] ${init.method || 'GET'} ${url} - Token present: ${!!token}, isPublic: ${isPublic}`
   );
 
   const headers = {
@@ -68,8 +72,6 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (token) {
     headers['Authorization'] = `Bearer ${token.trim()}`;
   }
-
-  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
 
   try {
     const response = await fetch(url, {
@@ -98,7 +100,18 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
 
     return response.json();
   } catch (error) {
-    console.error(`[API FETCH ERROR] ${url}:`, error);
+    console.error(`[API FETCH ERROR] URL: ${url}`);
+    console.error(`[API BASE URL] Current API_BASE: ${API_BASE}`);
+    console.error(`[API ERROR DETAILS]`, error);
+    
+    // Provide more descriptive error message for network failures
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new AppApiError(
+        `Failed to connect to server. Please check your internet connection and ensure the API is running at ${API_BASE}`,
+        0
+      );
+    }
+    
     throw error;
   }
 }
