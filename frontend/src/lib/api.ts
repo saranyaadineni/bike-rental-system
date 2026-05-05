@@ -2,13 +2,7 @@ import { handleApiError, isAuthError, logError, AppApiError } from './errorHandl
 
 // Get API base URL - normalize to always include "/api"
 const getApiBase = () => {
-  // In production, we strongly prefer the relative /api path to use Vercel's proxy.
-  // This avoids all CORS issues and mixed content problems.
-  if (import.meta.env.PROD) {
-    return 'https://bikes-5-zosq.onrender.com/api';
-  }
-
-  // In development or if explicitly overridden, use the env var
+  // Use VITE_API_URL if provided (for any environment)
   if (import.meta.env.VITE_API_URL) {
     const raw = String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '');
     return raw.endsWith('/api') ? raw : `${raw}/api`;
@@ -17,6 +11,11 @@ const getApiBase = () => {
     const raw = String(import.meta.env.VITE_API_BASE).trim().replace(/\/+$/, '');
     return raw.endsWith('/api') ? raw : `${raw}/api`;
   }
+  // In production, use relative path to same origin for best compatibility
+  if (import.meta.env.PROD) {
+    return '/api';
+  }
+  // In development, use localhost
   return '/api';
 };
 

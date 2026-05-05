@@ -8,6 +8,8 @@ import rateLimit from 'express-rate-limit';
 import winston from 'winston';
 import morgan from 'morgan';
 import compression from 'compression';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import bikeRoutes from './routes/bikes.js';
@@ -20,6 +22,9 @@ import settingsRoutes from './routes/settings.js';
 import heroImageRoutes from './routes/heroImages.js';
 import supportRoutes from './routes/support.js';
 import { initCronJobs } from './utils/cron.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -156,10 +161,21 @@ app.get('/', (req, res) => {
 });
 
 // =====================================
-// ✅ 404 HANDLER
+// ✅ SERVE FRONTEND STATIC FILES (IN PRODUCTION)
 // =====================================
-app.use((req, res) => {
-  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+const FRONTEND_BUILD_PATH = path.join(__dirname, '../frontend/dist');
+app.use(express.static(FRONTEND_BUILD_PATH));
+
+// =====================================
+// ✅ SPA FALLBACK ROUTE (SEND INDEX.HTML)
+// =====================================
+app.get('*', (req, res) => {
+  // If it's an API route, return 404 instead of index.html
+  if (req.originalUrl.startsWith('/api')) {
+    return res.status(404).json({ message: `API Route ${req.originalUrl} not found` });
+  }
+  // Otherwise, serve the frontend index.html for SPA routing
+  res.sendFile(path.join(FRONTEND_BUILD_PATH, 'index.html'));
 });
 
 // =====================================

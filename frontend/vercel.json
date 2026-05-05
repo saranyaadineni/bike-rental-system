@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/uploads/(.*)",
-      "destination": "https://bikes-5-zosq.onrender.com/uploads/$1"
+      "destination": "/uploads/$1"
     },
     {
       "source": "/api/(.*)",
-      "destination": "https://bikes-5-zosq.onrender.com/api/$1"
+      "destination": "/api/$1"
     },
     {
       "source": "/(.*)",
